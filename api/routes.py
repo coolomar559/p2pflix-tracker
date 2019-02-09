@@ -1,4 +1,6 @@
-from api import app
+from api import app, schemas
+from flask import request, jsonify
+from jsonschema import validate, ValidationError
 
 from flask import jsonify, request
 
@@ -160,6 +162,7 @@ def get_tracker_list():
     return jsonify(dummy_response)
 
 
+# adds a file to the tracker's list
 # expects JSON blob of metadata about the file
 # blob contains file name, full file hash, list of chunk names + hashes, guid
 # client ip collected from request
@@ -198,20 +201,36 @@ def get_tracker_list():
 '''
 @app.route('/add_file', methods=['POST'])
 def add_file():
-    if(not request.json):
-        return "error: request is not json"
+    success = True
 
-    print(request.json)
+    requestData = request.get_json(silent=True)
 
-    dummy_response = {
-        "success": True,
-        "file_id": 42,
-        "guid": "adsf54asd6f46asd54f65sd",
-    }
+    if(requestData is None):
+        error = "Request is not JSON"
+        success = False
+    else:
+        try:
+            validate(requestData, schemas.ADD_FILE_SCHEMA)
+        except ValidationError as e:
+            error = e.message
+            success = False
 
-    return jsonify(dummy_response)
+    if(success):
+        response = {
+            "success" : True,
+            "file_id" : 42,
+            "guid" : "adsf54asd6f46asd54f65sd"
+        }
+    else:
+        response = {
+            "success" : False,
+            "error" : error
+        }
+
+    return jsonify(response)
 
 
+# tells the server you're still there hosting
 # takes a json request with the clients guid as an argument
 # client ip collected from request
 # --- INPUT ---
@@ -238,18 +257,34 @@ def add_file():
 '''
 @app.route('/keep_alive', methods=['PUT'])
 def keep_alive():
-    if(not request.json):
-        return "error: request is not json"
+    success = True
 
-    print(request.json)
+    requestData = request.get_json(silent=True)
 
-    dummy_response = {
-        "success": True,
-    }
+    if(requestData is None):
+        error = "Request is not JSON"
+        success = False
+    else:
+        try:
+            validate(requestData, schemas.KEEP_ALIVE_SCHEMA)
+        except ValidationError as e:
+            error = e.message
+            success = False
 
-    return jsonify(dummy_response)
+    if(success):
+        response = {
+            "success" : True
+        }
+    else:
+        response = {
+            "success" : False,
+            "error" : error
+        }
+
+    return jsonify(response)
 
 
+# removes you as a host for this file
 # takes a json req with the client's guid and the file id as args
 # TODO: consider replacing the file id with a hash to make it tracker independent
 # --- INPUT ---
@@ -277,9 +312,28 @@ def keep_alive():
 '''
 @app.route('/deregister_file', methods=['DELETE'])
 def deregister_file():
-    if(not request.json or "title" not in request.json):
-        return "error: request is not json"
+    success = True
 
-    print(request.json)
+    requestData = request.get_json(silent=True)
 
-    return "removed you as a host for this file"
+    if(requestData is None):
+        error = "Request is not JSON"
+        success = False
+    else:
+        try:
+            validate(requestData, schemas.DEREGISTER_FILE_SCHEMA)
+        except ValidationError as e:
+            error = e.message
+            success = False
+
+    if(success):
+        response = {
+            "success" : True
+        }
+    else:
+        response = {
+            "success" : False,
+            "error" : error
+        }
+
+    return jsonify(response)
