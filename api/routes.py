@@ -33,7 +33,7 @@ def get_file_list():
     # pull the list of file ids and names from db and convert to json
 
     dummyResponse = {
-        "success" : "true",
+        "success" : True,
         "files" : [
             {
                 "id" : 1,
