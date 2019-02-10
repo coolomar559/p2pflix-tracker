@@ -4,7 +4,15 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-pylint = "*"
+flake8 = "*"
+flake8-import-order = "*"
+flake8-blind-except = "*"
+flake8-builtins = "*"
+flake8-pytest = "*"
+flake8-commas = "*"
+flake8-bugbear = "*"
+pep8-naming = "*"
+pytest = "*"
 
 [packages]
 flask = "*"
