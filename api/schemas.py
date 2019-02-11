@@ -8,6 +8,7 @@
     "full_hash" : "<hash of full file>",
     "chunks" : [
         { 
+            "id" : <chunk id for sequencing>,
             "name" : "<chunk filename>", 
             "hash" : "<hash of chunk>"
         },
@@ -28,12 +29,13 @@ ADD_FILE_SCHEMA = {
             "uniqueItems" : True,
             "items" : {
                 "type" : "object",
-                "maxProperties" : 2,
+                "maxProperties" : 3,
                 "properties" : {
+                    "id" : { "type" : "integer" },
                     "name" : { "type" : "string" },
                     "hash" : { "type" : "string" }
                 },
-                "required" : ["name", "hash"]
+                "required" : ["id", "name", "hash"]
             }
         },
         "guid" : { "type" : "string" }

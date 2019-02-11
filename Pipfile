@@ -16,6 +16,7 @@ pytest = "*"
 
 [packages]
 flask = "*"
+peewee = "*"
 
 [requires]
 python_version = "3.7"
