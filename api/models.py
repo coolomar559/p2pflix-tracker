@@ -35,5 +35,5 @@ class Hosts(BaseModel):
     class Meta:
         indexes = (
             # Specify a unique multi-column index on hostedFile/hostingPeer
-            (('hostedFile', 'HostingPeer'), True),
+            (('hostedFile', 'hostingPeer'), True),
         )
