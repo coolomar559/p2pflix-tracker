@@ -38,7 +38,7 @@ ADD_FILE_SCHEMA = {
                 "required": ["id", "name", "hash"],
             },
         },
-        "guid": {"type": "string"},
+        "guid": {"type": ["string", "null"]},
     },
     "required": ["name", "full_hash", "chunks", "guid"],
 }

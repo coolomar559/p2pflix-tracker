@@ -1,4 +1,4 @@
-from api import app, schemas
+from api import app, models, schemas
 
 from flask import jsonify, request
 
@@ -34,28 +34,9 @@ from jsonschema import ValidationError, validate
 def get_file_list():
     # pull the list of file ids and names from db and convert to json
 
-    dummy_response = {
-        "success": True,
-        "files": [
-            {
-                "id": 1,
-                "name": "joel",
-                "hash": "alksjhf98ufyah9",
-            },
-            {
-                "id": 2,
-                "name": "is",
-                "hash": "0f9ua40jf0j0934j0w39j09",
-            },
-            {
-                "id": 3,
-                "name": "great",
-                "hash": "j9ra09jrega546df684fgad648agdf",
-            },
-        ],
-    }
+    file_list_response = models.get_file_list()
 
-    return jsonify(dummy_response)
+    return jsonify(file_list_response)
 
 
 # TODO: consider replacing the id with the file's hash or to a json blob input to make it tracker independent
@@ -77,6 +58,7 @@ def get_file_list():
     ],
     "chunks" : [
         {
+            "id" : <chunk id for sequencing>,
             "name" : "<chunk filename>",
             "hash" : "<hash of chunk>",
         },
@@ -96,6 +78,8 @@ def get_file_list():
 def get_file(file_id):
     # pull the file metadata from the db (name, list of peers, list of chunks, etc)
 
+    models.get_file(file_id)
+
     dummy_response = {
         "success": True,
         "name": "sick nasty file with id {}".format(file_id),
@@ -107,14 +91,17 @@ def get_file(file_id):
         ],
         "chunks": [
             {
+                "id": 1,
                 "name": "avengers_1.mp4",
                 "hash": "asdljiksfadlkhjsadflkjhdsaflkjhsdaflkj",
             },
             {
+                "id": 2,
                 "name": "avengers_2.mp4",
                 "hash": "assadf5f4sd54asfd456",
             },
             {
+                "id": 3,
                 "name": "avengers_3.mp4",
                 "hash": "fdgh68fhg64d6d4f5gh3fg6h5d4687",
             },
@@ -148,18 +135,9 @@ def get_file(file_id):
 '''
 @app.route('/tracker_list', methods=['GET'])
 def get_tracker_list():
-    # pull the list of other trackers from the db
+    tracker_list_response = models.get_tracker_list()
 
-    dummy_response = {
-        "success": True,
-        "trackers": [
-            {"name": "the p2p bay", "ip": "1.1.1.1"},
-            {"name": "the p2p bay", "ip": "1.1.1.2"},
-            {"name": "the p2p bay", "ip": "1.1.1.3"},
-        ],
-    }
-
-    return jsonify(dummy_response)
+    return jsonify(tracker_list_response)
 
 
 # adds a file to the tracker's list
@@ -174,6 +152,7 @@ def get_tracker_list():
     "full_hash" : "<hash of full file>",
     "chunks" : [
         {
+            "id" : <chunk id for sequencing>,
             "name" : "<chunk filename>",
             "hash" : "<hash of chunk>",
         },
@@ -204,6 +183,7 @@ def add_file():
     success = True
 
     request_data = request.get_json(silent=True)
+    requester_ip = request.remote_addr
 
     if(request_data is None):
         error = "Request is not JSON"
@@ -211,19 +191,14 @@ def add_file():
     else:
         try:
             validate(request_data, schemas.ADD_FILE_SCHEMA)
-        except ValidationError as e:
+            response = models.add_file(request_data, requester_ip)
+        except Exception as e:
             error = str(e)
             success = False
 
-    if(success):
+    if(not success):
         response = {
-            "success": True,
-            "file_id": 42,
-            "guid": "adsf54asd6f46asd54f65sd",
-        }
-    else:
-        response = {
-            "success": False,
+            "success": success,
             "error": error,
         }
 
