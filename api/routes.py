@@ -1,8 +1,8 @@
 from api import app, schemas
-from flask import request, jsonify
-from jsonschema import validate, ValidationError
 
 from flask import jsonify, request
+
+from jsonschema import ValidationError, validate
 
 # Gets the list of files the tracker knows about
 # --- INPUT ---
@@ -203,28 +203,28 @@ def get_tracker_list():
 def add_file():
     success = True
 
-    requestData = request.get_json(silent=True)
+    request_data = request.get_json(silent=True)
 
-    if(requestData is None):
+    if(request_data is None):
         error = "Request is not JSON"
         success = False
     else:
         try:
-            validate(requestData, schemas.ADD_FILE_SCHEMA)
+            validate(request_data, schemas.ADD_FILE_SCHEMA)
         except ValidationError as e:
-            error = e.message
+            error = str(e)
             success = False
 
     if(success):
         response = {
-            "success" : True,
-            "file_id" : 42,
-            "guid" : "adsf54asd6f46asd54f65sd"
+            "success": True,
+            "file_id": 42,
+            "guid": "adsf54asd6f46asd54f65sd",
         }
     else:
         response = {
-            "success" : False,
-            "error" : error
+            "success": False,
+            "error": error,
         }
 
     return jsonify(response)
@@ -259,26 +259,26 @@ def add_file():
 def keep_alive():
     success = True
 
-    requestData = request.get_json(silent=True)
+    request_data = request.get_json(silent=True)
 
-    if(requestData is None):
+    if(request_data is None):
         error = "Request is not JSON"
         success = False
     else:
         try:
-            validate(requestData, schemas.KEEP_ALIVE_SCHEMA)
+            validate(request_data, schemas.KEEP_ALIVE_SCHEMA)
         except ValidationError as e:
-            error = e.message
+            error = str(e)
             success = False
 
     if(success):
         response = {
-            "success" : True
+            "success": success,
         }
     else:
         response = {
-            "success" : False,
-            "error" : error
+            "success": success,
+            "error": error,
         }
 
     return jsonify(response)
@@ -314,26 +314,26 @@ def keep_alive():
 def deregister_file():
     success = True
 
-    requestData = request.get_json(silent=True)
+    request_data = request.get_json(silent=True)
 
-    if(requestData is None):
+    if(request_data is None):
         error = "Request is not JSON"
         success = False
     else:
         try:
-            validate(requestData, schemas.DEREGISTER_FILE_SCHEMA)
+            validate(request_data, schemas.DEREGISTER_FILE_SCHEMA)
         except ValidationError as e:
-            error = e.message
+            error = str(e)
             success = False
 
     if(success):
         response = {
-            "success" : True
+            "success": True,
         }
     else:
         response = {
-            "success" : False,
-            "error" : error
+            "success": False,
+            "error": error,
         }
 
     return jsonify(response)

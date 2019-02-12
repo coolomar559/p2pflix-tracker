@@ -7,9 +7,9 @@
     "name" : "<file name>",
     "full_hash" : "<hash of full file>",
     "chunks" : [
-        { 
+        {
             "id" : <chunk id for sequencing>,
-            "name" : "<chunk filename>", 
+            "name" : "<chunk filename>",
             "hash" : "<hash of chunk>"
         },
         ...
@@ -18,29 +18,29 @@
 }
 '''
 ADD_FILE_SCHEMA = {
-    "type" : "object",
-    "maxProperties" : 4,
-    "properties" : {
-        "name" : { "type" : "string" },
-        "full_hash" : { "type" : "string" },
-        "chunks" : {
-            "type" : "array",
-            "minItems" : 1,
-            "uniqueItems" : True,
-            "items" : {
-                "type" : "object",
-                "maxProperties" : 3,
-                "properties" : {
-                    "id" : { "type" : "integer" },
-                    "name" : { "type" : "string" },
-                    "hash" : { "type" : "string" }
+    "type": "object",
+    "maxProperties": 4,
+    "properties": {
+        "name": {"type": "string"},
+        "full_hash": {"type": "string"},
+        "chunks": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": True,
+            "items": {
+                "type": "object",
+                "maxProperties": 3,
+                "properties": {
+                    "id": {"type": "integer"},
+                    "name": {"type": "string"},
+                    "hash": {"type": "string"},
                 },
-                "required" : ["id", "name", "hash"]
-            }
+                "required": ["id", "name", "hash"],
+            },
         },
-        "guid" : { "type" : "string" }
+        "guid": {"type": "string"},
     },
-    "required" : ["name", "full_hash", "chunks", "guid"]
+    "required": ["name", "full_hash", "chunks", "guid"],
 }
 
 
@@ -53,12 +53,12 @@ ADD_FILE_SCHEMA = {
 }
 '''
 KEEP_ALIVE_SCHEMA = {
-    "type" : "object",
-    "maxProperties" : 1,
-    "properties" : {
-        "guid" : { "type" : "string" }
+    "type": "object",
+    "maxProperties": 1,
+    "properties": {
+        "guid": {"type": "string"},
     },
-    "required" : ["guid"]
+    "required": ["guid"],
 }
 
 
@@ -72,11 +72,11 @@ KEEP_ALIVE_SCHEMA = {
 }
 '''
 DEREGISTER_FILE_SCHEMA = {
-    "type" : "object",
-    "maxProperties" : 2,
-    "properties" : {
-        "file_id" : { "type" : "integer" },
-        "guid" : { "type" : "string" }
+    "type": "object",
+    "maxProperties": 2,
+    "properties": {
+        "file_id": {"type": "integer"},
+        "guid": {"type": "string"},
     },
-    "required" : ["file_id", "guid"]
+    "required": ["file_id", "guid"],
 }
