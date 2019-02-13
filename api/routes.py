@@ -78,37 +78,9 @@ def get_file_list():
 def get_file(file_id):
     # pull the file metadata from the db (name, list of peers, list of chunks, etc)
 
-    models.get_file(file_id)
+    get_file_response = models.get_file(file_id)
 
-    dummy_response = {
-        "success": True,
-        "name": "sick nasty file with id {}".format(file_id),
-        "file_hash": "arfihu9f87h49h72f89hyufaf9h78af439h878h9f739h8a8h7",
-        "peers": [
-            {"ip": "192.168.0.1"},
-            {"ip": "192.168.0.2"},
-            {"ip": "192.168.0.3"},
-        ],
-        "chunks": [
-            {
-                "id": 1,
-                "name": "avengers_1.mp4",
-                "hash": "asdljiksfadlkhjsadflkjhdsaflkjhsdaflkj",
-            },
-            {
-                "id": 2,
-                "name": "avengers_2.mp4",
-                "hash": "assadf5f4sd54asfd456",
-            },
-            {
-                "id": 3,
-                "name": "avengers_3.mp4",
-                "hash": "fdgh68fhg64d6d4f5gh3fg6h5d4687",
-            },
-        ],
-    }
-
-    return jsonify(dummy_response)
+    return jsonify(get_file_response)
 
 
 # Gets the list of other trackers the tracker knows about
@@ -143,6 +115,7 @@ def get_tracker_list():
 # adds a file to the tracker's list
 # expects JSON blob of metadata about the file
 # blob contains file name, full file hash, list of chunk names + hashes, guid
+# TODO: do something about getting files added by localhost
 # client ip collected from request
 # --- INPUT ---
 # Expects JSON blob in the form:
@@ -191,18 +164,21 @@ def add_file():
     else:
         try:
             validate(request_data, schemas.ADD_FILE_SCHEMA)
-            response = models.add_file(request_data, requester_ip)
+            add_file_response = models.add_file(request_data, requester_ip)
+        except ValidationError as e:
+            error = str(e)
+            success = False
         except Exception as e:
             error = str(e)
             success = False
 
     if(not success):
-        response = {
+        add_file_response = {
             "success": success,
             "error": error,
         }
 
-    return jsonify(response)
+    return jsonify(add_file_response)
 
 
 # tells the server you're still there hosting
@@ -235,6 +211,7 @@ def keep_alive():
     success = True
 
     request_data = request.get_json(silent=True)
+    requester_ip = request.remote_addr
 
     if(request_data is None):
         error = "Request is not JSON"
@@ -242,21 +219,21 @@ def keep_alive():
     else:
         try:
             validate(request_data, schemas.KEEP_ALIVE_SCHEMA)
+            keep_alive_response = models.keep_alive(request_data, requester_ip)
         except ValidationError as e:
             error = str(e)
             success = False
+        except Exception as e:
+            error = str(e)
+            success = False
 
-    if(success):
-        response = {
-            "success": success,
-        }
-    else:
-        response = {
+    if(not success):
+        keep_alive_response = {
             "success": success,
             "error": error,
         }
 
-    return jsonify(response)
+    return jsonify(keep_alive_response)
 
 
 # removes you as a host for this file
