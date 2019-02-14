@@ -11,12 +11,12 @@ from jsonschema import ValidationError, validate
 # Returns a JSON blob of the form:
 '''
 {
-    "success" : <true/false>,
-    "files" : [
+    "success": true,
+    "files": [
         {
-            "id" : <file id>,
-            "name" : "<file's name>",
-            "hash" : "<full file hash>"
+            "id": <file id>,
+            "name": "<file's name>",
+            "hash": "<full file hash>"
         },
         ...
     ]
@@ -26,8 +26,8 @@ from jsonschema import ValidationError, validate
 # Returns a JSON blob in the form:
 '''
 {
-    "success" : false,
-    "error" : "<error reason>"
+    "success": false,
+    "error": "<error reason>"
 }
 '''
 @app.route('/file_list', methods=['GET'])
@@ -49,18 +49,18 @@ def get_file_list():
 # Returns a JSON blob of the form:
 '''
 {
-    "success" : <true/false>,
-    "name" : "<file name>",
-    "file_hash" : "<hash of the full file>",
-    "peers" : [
-        { "ip" : "<peer's ip>" },
+    "success": true,
+    "name": "<file name>",
+    "file_hash": "<hash of the full file>",
+    "peers": [
+        {"ip": "<peer's ip>"},
         ...
     ],
-    "chunks" : [
+    "chunks": [
         {
-            "id" : <chunk id for sequencing>,
-            "name" : "<chunk filename>",
-            "hash" : "<hash of chunk>",
+            "id": <chunk id for sequencing>,
+            "name": "<chunk filename>",
+            "hash": "<hash of chunk>"
         },
         ...
     ]
@@ -90,9 +90,9 @@ def get_file(file_id):
 # Returns a JSON blob of the form:
 '''
 {
-    "success" : <true/false>,
-    "trackers" : [
-        { "name" : "<tracker name>", "ip" : "<tracker's ip>"},
+    "success": true,
+    "trackers": [
+        {"name": "<tracker name>", "ip": "<tracker's ip>"},
         ...
     ]
 }
@@ -101,8 +101,8 @@ def get_file(file_id):
 # Returns a JSON blob in the form:
 '''
 {
-    "success" : false,
-    "error" : "<error reason>"
+    "success": false,
+    "error": "<error reason>"
 }
 '''
 @app.route('/tracker_list', methods=['GET'])
@@ -121,34 +121,34 @@ def get_tracker_list():
 # Expects JSON blob in the form:
 '''
 {
-    "name" : "<file name>",
-    "full_hash" : "<hash of full file>",
-    "chunks" : [
+    "name": "<file name>",
+    "full_hash": "<hash of full file>",
+    "chunks": [
         {
-            "id" : <chunk id for sequencing>,
-            "name" : "<chunk filename>",
-            "hash" : "<hash of chunk>",
+            "id": <chunk id for sequencing>,
+            "name": "<chunk filename>",
+            "hash": "<hash of chunk>"
         },
         ...
     ],
-    "guid" : "<client's guid>"
+    "guid": "<client's guid>"
 }
 '''
 # --- OUTPUT ---
 # Returns a JSON blob in the form:
 '''
 {
-    "success" : <true/false>,
-    "file_id" : "<the existing id if the tracker already has it, or the new one if it didnt>",
-    "guid" : "<echoed guid if you had one already, otherwise your newly assigned one",
+    "success": true,
+    "file_id": "<the existing id if the tracker already has it, or the new one if it didnt>",
+    "guid": "<echoed guid if you had one already, otherwise your newly assigned one"
 }
 '''
 # --- ON ERROR ---
 # Returns a JSON blob in the form:
 '''
 {
-    "success" : false,
-    "error" : "<error reason>",
+    "success": false,
+    "error": "<error reason>"
 }
 '''
 @app.route('/add_file', methods=['POST'])
@@ -188,22 +188,22 @@ def add_file():
 # Expects JSON blob in the form:
 '''
 {
-    "guid" : "<client's guid>",
+    "guid": "<client's guid>"
 }
 '''
 # --- OUTPUT ---
 # Returns a JSON blob in the form:
 '''
 {
-    "success" : <true/false>,
+    "success": true
 }
 '''
 # --- ON ERROR ---
 # Returns a JSON blob in the form:
 '''
 {
-    "success" : false,
-    "error" : "<error reason>",
+    "success": false,
+    "error": "<error reason>"
 }
 '''
 @app.route('/keep_alive', methods=['PUT'])
@@ -243,23 +243,23 @@ def keep_alive():
 # Expects JSON blob in the form:
 '''
 {
-    "file_id" : <file's id in the tracker db>,
-    "guid" : "<client's guid>",
+    "file_id": <file's id in the tracker db>,
+    "guid": "<client's guid>"
 }
 '''
 # --- OUTPUT ---
 # Returns a JSON blob in the form:
 '''
 {
-    "success" : <true/false>,
+    "success": true
 }
 '''
 # --- ON ERROR ---
 # Returns a JSON blob in the form:
 '''
 {
-    "success" : false,
-    "error" : "<error reason>",
+    "success": false,
+    "error": "<error reason>"
 }
 '''
 @app.route('/deregister_file', methods=['DELETE'])
@@ -274,18 +274,18 @@ def deregister_file():
     else:
         try:
             validate(request_data, schemas.DEREGISTER_FILE_SCHEMA)
+            deregister_file_response = models.deregister_file(request_data)
         except ValidationError as e:
             error = str(e)
             success = False
+        except Exception as e:
+            error = str(e)
+            success = False
 
-    if(success):
-        response = {
-            "success": True,
-        }
-    else:
-        response = {
-            "success": False,
+    if(not success):
+        deregister_file_response = {
+            "success": success,
             "error": error,
         }
 
-    return jsonify(response)
+    return jsonify(deregister_file_response)

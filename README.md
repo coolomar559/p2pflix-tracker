@@ -131,7 +131,7 @@ Ex: `localhost:42069/tracker_list`
 JSON object in the form:
 ```python
 {
-    "success": true,    #false
+    "success": true,    #boolean
     "trackers": [
         {
             "name": "<tracker name>",   #string
@@ -236,6 +236,7 @@ JSON object in the form:
 ## POST - /deregister_file
 Removes you as a host for the specified file.
 Requires a guid.
+If a file has no hosts remaining, removes it.
 
 ### Input
 DELETE request to the endpoint url with a JSON object.

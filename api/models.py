@@ -58,7 +58,7 @@ class Chunk(BaseModel):
     chunk_id = peewee.IntegerField()
     chunk_hash = peewee.CharField()
     name = peewee.CharField()
-    parent_file = peewee.ForeignKeyField(File, backref="chunks")
+    parent_file = peewee.ForeignKeyField(File, backref="chunks", on_delete='cascade', on_update='cascade')
 
     def to_dict(self):
         output_dict = {
@@ -71,8 +71,8 @@ class Chunk(BaseModel):
 
 
 class Hosts(BaseModel):
-    hosted_file = peewee.ForeignKeyField(File, backref='hosted_file')
-    hosting_peer = peewee.ForeignKeyField(Peer, backref='hosting_peer')
+    hosted_file = peewee.ForeignKeyField(File, backref='hosted_file', on_delete='cascade', on_update='cascade')
+    hosting_peer = peewee.ForeignKeyField(Peer, backref='hosting_peer', on_delete='cascade', on_update='cascade')
 
     class Meta:
         indexes = (
@@ -97,7 +97,7 @@ def create_tables():
 def get_tracker_list():
     success = True
     tracker_list_response = {
-        "success": True,
+        "success": success,
         "trackers": [],
     }
 
@@ -129,7 +129,7 @@ def get_tracker_list():
 def get_file_list():
     success = True
     file_list_response = {
-        "success": True,
+        "success": success,
         "files": [],
     }
 
@@ -160,7 +160,7 @@ def get_file_list():
 def get_file(file_id):
     success = True
     get_file_response = {
-        "success": True,
+        "success": success,
         "name": None,
         "full_hash": None,
         "chunks": [],
@@ -214,7 +214,7 @@ def get_file(file_id):
 def add_file(add_file_data, peer_ip):
     success = True
     add_file_response = {
-        "success": True,
+        "success": success,
         "file_id": None,
         "guid": None,
     }
@@ -289,7 +289,7 @@ def add_peer(peer_ip):
 def keep_alive(keep_alive_data, peer_ip):
     success = True
     keep_alive_response = {
-        "success": True,
+        "success": success,
     }
 
     try:
@@ -312,6 +312,43 @@ def keep_alive(keep_alive_data, peer_ip):
         }
 
     return keep_alive_response
+
+
+# removes a peer from the hosts list of a file
+# if the file has no hosts remaining, removes it
+def deregister_file(deregister_file_data):
+    success = True
+    deregister_file_response = {
+        "success": success,
+    }
+
+    try:
+        host_relationship = Hosts.select()\
+            .join(File, on=(File.id == Hosts.hosted_file))\
+            .join(Peer, on=(Peer.id == Hosts.hosting_peer))\
+            .where(Peer.uuid == deregister_file_data["guid"] and File.id == deregister_file_data["file_id"]).get()
+        host_relationship.delete_instance()
+
+        try:
+            Hosts.get(Hosts.hosted_file == deregister_file_data["file_id"])
+        except Hosts.DoesNotExist:
+            File.get(File.id == deregister_file_data["file_id"]).delete_instance()
+
+    except Hosts.DoesNotExist:
+        error = "No peer with guid {} is currently hosting file with id {}"\
+            .format(deregister_file_data["guid"], deregister_file_data["file_id"])
+        success = False
+    except Exception as e:
+        error = str(e)
+        success = False
+
+    if(not success):
+        deregister_file_response = {
+            "success": success,
+            "error": error,
+        }
+
+    return deregister_file_response
 
 
 # Decorators to explicitly manage connections
