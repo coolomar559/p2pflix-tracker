@@ -30,6 +30,9 @@ tests, put everything needed in the `tests` directory.
 
 To run the tracker, use `pipenv run ./tracker.py`
 
+
+
+
 # REST API Documentation
 
 Currently uses port `42069`.
@@ -47,6 +50,7 @@ Gets the list of files that the tracker knows about.
 
 ### Input
 GET request to the endpoint url.
+
 Ex: `localhost:42069/list_files`
 
 ### Output
@@ -79,6 +83,7 @@ Gets the information about a specified file, including peers hosting it and its 
 
 ### Input
 GET request to the endpoint url, containing the file's id in the url.
+
 Ex: `localhost:42069/file/2`
 
 ### Output
@@ -119,6 +124,7 @@ Gets the list of other trackers the tracker knows about.
 
 ### Input
 GET request to the endpoint url.
+
 Ex: `localhost:42069/tracker_list`
 
 ### Output
@@ -154,6 +160,7 @@ If the peer does not already have a guid, they can provide `null` and will be gi
 
 ### Input
 POST request to the endpoint url with a JSON object.
+
 Ex: `localhost:42069/add_file`
 
 JSON object in the form:
@@ -199,6 +206,7 @@ Requires a guid.
 
 ### Input
 PUT request to the endpoint url with a JSON object.
+
 Ex: `localhost:42069/keep_alive`
 
 JSON object in the form:
@@ -230,7 +238,8 @@ Removes you as a host for the specified file.
 Requires a guid.
 
 ### Input
-PUT request to the endpoint url with a JSON object.
+DELETE request to the endpoint url with a JSON object.
+
 Ex: `localhost:42069/keep_alive`
 
 JSON object in the form:
