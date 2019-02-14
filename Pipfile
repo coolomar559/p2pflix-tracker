@@ -16,7 +16,7 @@ pytest = "*"
 
 [packages]
 flask = "*"
-flask-expects-json = "*"
+peewee = "*"
 
 [requires]
 python_version = "3.7"

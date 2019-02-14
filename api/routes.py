@@ -1,6 +1,8 @@
-from api import app
+from api import app, models, schemas
 
 from flask import jsonify, request
+
+from jsonschema import ValidationError, validate
 
 # Gets the list of files the tracker knows about
 # --- INPUT ---
@@ -9,12 +11,12 @@ from flask import jsonify, request
 # Returns a JSON blob of the form:
 '''
 {
-    "success" : <true/false>,
-    "files" : [
+    "success": true,
+    "files": [
         {
-            "id" : <file id>,
-            "name" : "<file's name>",
-            "hash" : "<full file hash>"
+            "id": <file id>,
+            "name": "<file's name>",
+            "hash": "<full file hash>"
         },
         ...
     ]
@@ -24,36 +26,17 @@ from flask import jsonify, request
 # Returns a JSON blob in the form:
 '''
 {
-    "success" : false,
-    "error" : "<error reason>"
+    "success": false,
+    "error": "<error reason>"
 }
 '''
 @app.route('/file_list', methods=['GET'])
 def get_file_list():
     # pull the list of file ids and names from db and convert to json
 
-    dummy_response = {
-        "success": True,
-        "files": [
-            {
-                "id": 1,
-                "name": "joel",
-                "hash": "alksjhf98ufyah9",
-            },
-            {
-                "id": 2,
-                "name": "is",
-                "hash": "0f9ua40jf0j0934j0w39j09",
-            },
-            {
-                "id": 3,
-                "name": "great",
-                "hash": "j9ra09jrega546df684fgad648agdf",
-            },
-        ],
-    }
+    file_list_response = models.get_file_list()
 
-    return jsonify(dummy_response)
+    return jsonify(file_list_response)
 
 
 # TODO: consider replacing the id with the file's hash or to a json blob input to make it tracker independent
@@ -66,17 +49,18 @@ def get_file_list():
 # Returns a JSON blob of the form:
 '''
 {
-    "success" : <true/false>,
-    "name" : "<file name>",
-    "file_hash" : "<hash of the full file>",
-    "peers" : [
-        { "ip" : "<peer's ip>" },
+    "success": true,
+    "name": "<file name>",
+    "file_hash": "<hash of the full file>",
+    "peers": [
+        {"ip": "<peer's ip>"},
         ...
     ],
-    "chunks" : [
+    "chunks": [
         {
-            "name" : "<chunk filename>",
-            "hash" : "<hash of chunk>",
+            "id": <chunk id for sequencing>,
+            "name": "<chunk filename>",
+            "hash": "<hash of chunk>"
         },
         ...
     ]
@@ -94,32 +78,9 @@ def get_file_list():
 def get_file(file_id):
     # pull the file metadata from the db (name, list of peers, list of chunks, etc)
 
-    dummy_response = {
-        "success": True,
-        "name": "sick nasty file with id {}".format(file_id),
-        "file_hash": "arfihu9f87h49h72f89hyufaf9h78af439h878h9f739h8a8h7",
-        "peers": [
-            {"ip": "192.168.0.1"},
-            {"ip": "192.168.0.2"},
-            {"ip": "192.168.0.3"},
-        ],
-        "chunks": [
-            {
-                "name": "avengers_1.mp4",
-                "hash": "asdljiksfadlkhjsadflkjhdsaflkjhsdaflkj",
-            },
-            {
-                "name": "avengers_2.mp4",
-                "hash": "assadf5f4sd54asfd456",
-            },
-            {
-                "name": "avengers_3.mp4",
-                "hash": "fdgh68fhg64d6d4f5gh3fg6h5d4687",
-            },
-        ],
-    }
+    get_file_response = models.get_file(file_id)
 
-    return jsonify(dummy_response)
+    return jsonify(get_file_response)
 
 
 # Gets the list of other trackers the tracker knows about
@@ -129,9 +90,9 @@ def get_file(file_id):
 # Returns a JSON blob of the form:
 '''
 {
-    "success" : <true/false>,
-    "trackers" : [
-        { "name" : "<tracker name>", "ip" : "<tracker's ip>"},
+    "success": true,
+    "trackers": [
+        {"name": "<tracker name>", "ip": "<tracker's ip>"},
         ...
     ]
 }
@@ -140,146 +101,191 @@ def get_file(file_id):
 # Returns a JSON blob in the form:
 '''
 {
-    "success" : false,
-    "error" : "<error reason>"
+    "success": false,
+    "error": "<error reason>"
 }
 '''
 @app.route('/tracker_list', methods=['GET'])
 def get_tracker_list():
-    # pull the list of other trackers from the db
+    tracker_list_response = models.get_tracker_list()
 
-    dummy_response = {
-        "success": True,
-        "trackers": [
-            {"name": "the p2p bay", "ip": "1.1.1.1"},
-            {"name": "the p2p bay", "ip": "1.1.1.2"},
-            {"name": "the p2p bay", "ip": "1.1.1.3"},
-        ],
-    }
-
-    return jsonify(dummy_response)
+    return jsonify(tracker_list_response)
 
 
+# adds a file to the tracker's list
 # expects JSON blob of metadata about the file
 # blob contains file name, full file hash, list of chunk names + hashes, guid
+# TODO: do something about getting files added by localhost
 # client ip collected from request
 # --- INPUT ---
 # Expects JSON blob in the form:
 '''
 {
-    "name" : "<file name>",
-    "full_hash" : "<hash of full file>",
-    "chunks" : [
+    "name": "<file name>",
+    "full_hash": "<hash of full file>",
+    "chunks": [
         {
-            "name" : "<chunk filename>",
-            "hash" : "<hash of chunk>",
+            "id": <chunk id for sequencing>,
+            "name": "<chunk filename>",
+            "hash": "<hash of chunk>"
         },
         ...
     ],
-    "guid" : "<client's guid>"
+    "guid": "<client's guid>"
 }
 '''
 # --- OUTPUT ---
 # Returns a JSON blob in the form:
 '''
 {
-    "success" : <true/false>,
-    "file_id" : "<the existing id if the tracker already has it, or the new one if it didnt>",
-    "guid" : "<echoed guid if you had one already, otherwise your newly assigned one",
+    "success": true,
+    "file_id": "<the existing id if the tracker already has it, or the new one if it didnt>",
+    "guid": "<echoed guid if you had one already, otherwise your newly assigned one"
 }
 '''
 # --- ON ERROR ---
 # Returns a JSON blob in the form:
 '''
 {
-    "success" : false,
-    "error" : "<error reason>",
+    "success": false,
+    "error": "<error reason>"
 }
 '''
 @app.route('/add_file', methods=['POST'])
 def add_file():
-    if(not request.json):
-        return "error: request is not json"
+    success = True
 
-    print(request.json)
+    request_data = request.get_json(silent=True)
+    requester_ip = request.remote_addr
 
-    dummy_response = {
-        "success": True,
-        "file_id": 42,
-        "guid": "adsf54asd6f46asd54f65sd",
-    }
+    if(request_data is None):
+        error = "Request is not JSON"
+        success = False
+    else:
+        try:
+            validate(request_data, schemas.ADD_FILE_SCHEMA)
+            add_file_response = models.add_file(request_data, requester_ip)
+        except ValidationError as e:
+            error = str(e)
+            success = False
+        except Exception as e:
+            error = str(e)
+            success = False
 
-    return jsonify(dummy_response)
+    if(not success):
+        add_file_response = {
+            "success": success,
+            "error": error,
+        }
+
+    return jsonify(add_file_response)
 
 
+# tells the server you're still there hosting
 # takes a json request with the clients guid as an argument
 # client ip collected from request
 # --- INPUT ---
 # Expects JSON blob in the form:
 '''
 {
-    "guid" : "<client's guid>",
+    "guid": "<client's guid>"
 }
 '''
 # --- OUTPUT ---
 # Returns a JSON blob in the form:
 '''
 {
-    "success" : <true/false>,
+    "success": true
 }
 '''
 # --- ON ERROR ---
 # Returns a JSON blob in the form:
 '''
 {
-    "success" : false,
-    "error" : "<error reason>",
+    "success": false,
+    "error": "<error reason>"
 }
 '''
 @app.route('/keep_alive', methods=['PUT'])
 def keep_alive():
-    if(not request.json):
-        return "error: request is not json"
+    success = True
 
-    print(request.json)
+    request_data = request.get_json(silent=True)
+    requester_ip = request.remote_addr
 
-    dummy_response = {
-        "success": True,
-    }
+    if(request_data is None):
+        error = "Request is not JSON"
+        success = False
+    else:
+        try:
+            validate(request_data, schemas.KEEP_ALIVE_SCHEMA)
+            keep_alive_response = models.keep_alive(request_data, requester_ip)
+        except ValidationError as e:
+            error = str(e)
+            success = False
+        except Exception as e:
+            error = str(e)
+            success = False
 
-    return jsonify(dummy_response)
+    if(not success):
+        keep_alive_response = {
+            "success": success,
+            "error": error,
+        }
+
+    return jsonify(keep_alive_response)
 
 
+# removes you as a host for this file
 # takes a json req with the client's guid and the file id as args
 # TODO: consider replacing the file id with a hash to make it tracker independent
 # --- INPUT ---
 # Expects JSON blob in the form:
 '''
 {
-    "file_id" : <file's id in the tracker db>,
-    "guid" : "<client's guid>",
+    "file_id": <file's id in the tracker db>,
+    "guid": "<client's guid>"
 }
 '''
 # --- OUTPUT ---
 # Returns a JSON blob in the form:
 '''
 {
-    "success" : <true/false>,
+    "success": true
 }
 '''
 # --- ON ERROR ---
 # Returns a JSON blob in the form:
 '''
 {
-    "success" : false,
-    "error" : "<error reason>",
+    "success": false,
+    "error": "<error reason>"
 }
 '''
 @app.route('/deregister_file', methods=['DELETE'])
 def deregister_file():
-    if(not request.json or "title" not in request.json):
-        return "error: request is not json"
+    success = True
 
-    print(request.json)
+    request_data = request.get_json(silent=True)
 
-    return "removed you as a host for this file"
+    if(request_data is None):
+        error = "Request is not JSON"
+        success = False
+    else:
+        try:
+            validate(request_data, schemas.DEREGISTER_FILE_SCHEMA)
+            deregister_file_response = models.deregister_file(request_data)
+        except ValidationError as e:
+            error = str(e)
+            success = False
+        except Exception as e:
+            error = str(e)
+            success = False
+
+    if(not success):
+        deregister_file_response = {
+            "success": success,
+            "error": error,
+        }
+
+    return jsonify(deregister_file_response)
