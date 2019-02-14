@@ -103,7 +103,7 @@ JSON object in the form:
         {
             "id": <chunk id for sequencing>,    #integer
             "name": "<chunk filename>", #string
-            "hash": "<hash of chunk>",  #string (sha256 hash)
+            "hash": "<hash of chunk>"   #string (sha256 hash)
         },
         ...
     ]
@@ -172,7 +172,7 @@ JSON object in the form:
         {
             "id": <chunk id for sequencing>,    #integer
             "name": "<chunk filename>", #string
-            "hash": "<hash of chunk>",  #string (sha256 hash)
+            "hash": "<hash of chunk>"   #string (sha256 hash)
         },
         ...
     ],
