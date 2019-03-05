@@ -1,8 +1,6 @@
 from api import app, models, schemas
-
 from flask import jsonify, request
-
-from jsonschema import ValidationError, validate
+from jsonschema import validate, ValidationError
 
 # Gets the list of files the tracker knows about
 # --- INPUT ---

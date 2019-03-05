@@ -2,7 +2,6 @@ import datetime
 import uuid
 
 from api import app
-
 import peewee
 
 db = peewee.SqliteDatabase(None)
