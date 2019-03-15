@@ -1,0 +1,25 @@
+# Settings for the tracker
+[settings]
+
+# What port the tracker will run on (other trackers will assume 80 by default,
+# so don't change this without a really good reason)
+# possible values: any valid port integer
+server_port = 42069
+
+# Whether or not the tracker should run in debug mode
+# Debug mode causes extra logging and will restart the tracker whenever modifications
+# are made to the source code
+# possible values: true/false
+debug_mode = "true"
+
+# The path to the tracker database
+# If the file does not already exist it will be created, but only if the full path to its
+# parent folder exists
+# possible values: relative or absolute path, as string
+db_path = "./tracker.db"
+
+# The keep alive timeout for peers (in seconds)
+# If the keep alive timeout is exceeded without a peer refreshing its timeout, it
+# will no longer appear as a hosting peer for any file
+# possible values: any positive integer
+keepalive_timeout = 300 

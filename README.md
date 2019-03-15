@@ -28,14 +28,16 @@ tests, put everything needed in the `tests` directory.
 
 ## Running
 
-To run the tracker, use `pipenv run ./tracker.py`
+To run the tracker, use `pipenv run ./tracker.py [-h] [-c [config filename]]`
+
+By default the tracker will load setting from `config.toml`.
 
 
 
 
 # REST API Documentation
 
-Currently uses port `42069`.
+Currently uses port `42069` by default, but will use the port specified in the config file.
 
 ## Endpoints
 * GET - /list_files
