@@ -47,6 +47,8 @@ Currently uses port `42069` by default, but will use the port specified in the c
 * POST - /add_file
 * PUT - /keep_alive
 * DELETE - /deregister_file
+* UPDATE - /tracker_sync
+* POST - /new_tracker
 
 ## GET - /file_list
 Gets the list of files that the tracker knows about.
@@ -98,7 +100,7 @@ JSON object in the form:
     "file_hash": "<hash of the full file>",    #string (sha256 hash)
     "peers": [
         {
-            "ip": "<peer's ip>" #string 
+            "ip": "<peer's ip>" #string
         },
         ...
     ],
@@ -141,7 +143,7 @@ JSON object in the form:
     "file_hash": "<hash of the full file>",    #string (sha256 hash)
     "peers": [
         {
-            "ip": "<peer's ip>" #string 
+            "ip": "<peer's ip>" #string
         },
         ...
     ],
@@ -199,7 +201,7 @@ JSON object in the form:
 
 ## POST - /add_file
 Adds a file to the tracker's list.
-Requires the hash of the file and all its chunks.
+Requires the peer guid, the hash of the file, all its chunks, and a sequence number.
 If a file with a matching hash already exists, adds the peer as a host for that file.
 Peer must provide their guid when adding a file.
 If the peer does not already have a guid, they can provide `null` and will be given a guid in the response.
@@ -222,7 +224,8 @@ JSON object in the form:
         },
         ...
     ],
-    "guid": "<client's guid>"/null   #string or null
+    "guid": "<client's guid>"/null,   #string or null
+    "sequence": <sequence number>   #integer
 }
 ```
 
@@ -293,7 +296,8 @@ JSON object in the form:
 ```python
 {
     "file_id": <files id in the tracker db>,   #integer
-    "guid": "<client's guid>"   #string
+    "guid": "<client's guid>",   #string
+    "sequence": <sequence number>   #integer
 }
 ```
 
@@ -301,9 +305,75 @@ JSON object in the form:
 JSON object in the form:
 ```python
 {
-    "success": true #boolean
+    "success": true   #boolean
 }
 ```
+
+### On Error
+JSON object in the form:
+```python
+{
+    "success": false,   #boolean
+    "error": "<error reason>"   #string
+}
+```
+
+## UPDATE - /tracker_sync
+Send/receive an information update to/from another tracker.
+If the tracker has seen the event already, it ignores it. If the tracker has not seen the
+event, it applies it to its own database and broadcasts it to other trackers.
+
+### Input
+JSON object in the form:
+```python
+{
+    "type": "add_file|keep_alive|deregister_file|new_tracker",   #string
+    "data": { ... },   #dictionary
+}
+```
+
+### Output
+JSON object in the form:
+```python
+{
+    "success": true   #boolean
+}
+```
+
+### On Error
+JSON object in the form:
+```python
+{
+    "success": false,   #boolean
+    "error": "<error reason>"   #string
+}
+```
+
+### Output
+JSON object in the form:
+```python
+{
+    "success": true   #boolean
+}
+```
+
+### On Error
+JSON object in the form:
+```python
+{
+    "success": false,   #boolean
+    "error": "<error reason>"   #string
+}
+```
+
+## POST - /new_tracker
+Register as a new tracker, getting a full database update.
+
+### Input
+No input is necessary for this endpoint.
+
+### Output
+TBD
 
 ### On Error
 JSON object in the form:
