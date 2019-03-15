@@ -81,7 +81,7 @@ class Hosts(BaseModel):
 
 
 def load_database(db_path):
-    db.init(db_path)
+    db.init(str(db_path))
 
     if(not db_path.is_file()):
         create_tables()
