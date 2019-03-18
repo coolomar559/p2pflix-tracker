@@ -48,13 +48,13 @@ Currently uses port `42069` by default, but will use the port specified in the c
 * PUT - /keep_alive
 * DELETE - /deregister_file
 
-## GET - /list_files
+## GET - /file_list
 Gets the list of files that the tracker knows about.
 
 ### Input
 GET request to the endpoint url.
 
-Ex: `localhost:42069/list_files`
+Ex: `localhost:42069/file_list`
 
 ### Output
 JSON object in the form:
