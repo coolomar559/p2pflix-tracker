@@ -1,7 +1,7 @@
 import datetime
 import uuid
 
-from api import app
+from api import app, constants
 import peewee
 
 db = peewee.SqliteDatabase(None)
@@ -175,10 +175,15 @@ def get_file(file_id):
             .join(File, on=(File.id == Chunk.parent_file))\
             .where(File.id == file_id)
 
+        timeout_time = datetime.datetime.now() - constants.KEEP_ALIVE_TIMEOUT
         peer_query = Peer.select(Peer.ip)\
             .join(Hosts, on=(Peer.id == Hosts.hosting_peer))\
             .join(File, on=(File.id == Hosts.hosted_file))\
-            .where(File.id == file_id)
+            .where((File.id == file_id) &
+                   (Peer.keep_alive_timestamp >= timeout_time))
+
+        if(len(peer_query) == 0):
+            raise Exception("File has no hosting peers currently online")
 
         for chunk in chunk_query:
             get_file_response["chunks"].append(chunk.to_dict())
@@ -206,6 +211,64 @@ def get_file(file_id):
         }
 
     return get_file_response
+
+
+# returns the data for a specific file hash
+def get_file_by_hash(file_full_hash):
+    success = True
+    get_file_by_hash_response = {
+        "success": success,
+        "name": None,
+        "full_hash": None,
+        "chunks": [],
+        "peers": [],
+    }
+
+    try:
+        file_query = File.select(File.name, File.full_hash).where(File.full_hash == file_full_hash).get()
+        get_file_by_hash_response["name"] = file_query.name
+        get_file_by_hash_response["full_hash"] = file_query.full_hash
+
+        chunk_query = Chunk.select(Chunk.chunk_id, Chunk.chunk_hash, Chunk.name)\
+            .join(File, on=(File.id == Chunk.parent_file))\
+            .where(File.full_hash == file_full_hash)
+
+        timeout_time = datetime.datetime.now() - constants.KEEP_ALIVE_TIMEOUT
+        peer_query = Peer.select(Peer.ip)\
+            .join(Hosts, on=(Peer.id == Hosts.hosting_peer))\
+            .join(File, on=(File.id == Hosts.hosted_file))\
+            .where((File.full_hash == file_full_hash) &
+                   (Peer.keep_alive_timestamp >= timeout_time))
+
+        if(len(peer_query) == 0):
+            raise Exception("File has no hosting peers currently online")
+
+        for chunk in chunk_query:
+            get_file_by_hash_response["chunks"].append(chunk.to_dict())
+
+        for peer in peer_query:
+            get_file_by_hash_response["peers"].append(peer.to_dict_simple())
+
+    except File.DoesNotExist:
+        error = "File with hash {} does not exist".format(file_full_hash)
+        success = False
+    except Chunk.DoesNotExist:
+        error = "File is invalid, has no chunks"
+        success = False
+    except Peer.DoesNotExist:
+        error = "File has no hosting peers"
+        success = False
+    except Exception as e:
+        error = str(e)
+        success = False
+
+    if(not success):
+        get_file_by_hash_response = {
+            "success": success,
+            "error": error,
+        }
+
+    return get_file_by_hash_response
 
 
 # TODO: need to check if chunk hashes match if the file already exists
