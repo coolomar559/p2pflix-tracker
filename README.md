@@ -67,7 +67,8 @@ JSON object in the form:
         {
             "id": <file id>,    #integer
             "name": "<file's name>",   #string
-            "hash": "<full file hash>" #base64 string
+            "hash": "<full file hash>", #base64 string
+            "peer_count": <number of recently keepalived peers> #integer
         },
         ...
     ]

@@ -14,7 +14,8 @@ from jsonschema import validate, ValidationError
         {
             "id": <file id>,
             "name": "<file's name>",
-            "hash": "<full file hash>"
+            "hash": "<full file hash>",
+            "peer_count": <number of recently keepalived peer>
         },
         ...
     ]

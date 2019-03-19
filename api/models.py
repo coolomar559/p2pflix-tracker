@@ -4,6 +4,7 @@ import uuid
 
 from api import app, constants
 import peewee
+from peewee import fn
 
 db = peewee.SqliteDatabase(None)
 
@@ -49,6 +50,16 @@ class File(BaseModel):
             "id": self.id,
             "name": self.name,
             "full_hash": self.full_hash,
+        }
+
+        return output_dict
+
+    def to_dict_full(self, peer_count):
+        output_dict = {
+            "id": self.id,
+            "name": self.name,
+            "full_hash": self.full_hash,
+            "peer_count": peer_count,
         }
 
         return output_dict
@@ -125,7 +136,6 @@ def get_tracker_list():
 
 
 # returns the file list on the tracker as a dict in the specified output format
-# TODO: only return files that have a recent timestamped peer
 def get_file_list():
     success = True
     file_list_response = {
@@ -138,8 +148,23 @@ def get_file_list():
         if(not file_list_query.exists()):
             raise File.DoesNotExist
 
+        timeout_time = datetime.datetime.now() - constants.KEEP_ALIVE_TIMEOUT
         for file in file_list_query:
-            file_list_response["files"].append(file.to_dict_simple())
+            try:
+                peer_query = Peer.select(fn.COUNT(Peer.id).alias("peer_count"))\
+                    .join(Hosts, on=(Peer.id == Hosts.hosting_peer))\
+                    .join(File, on=(File.id == Hosts.hosted_file))\
+                    .where((File.full_hash == file.full_hash) &
+                           (Peer.keep_alive_timestamp >= timeout_time))\
+                    .get()
+
+                file_list_response["files"].append(file.to_dict_full(peer_query.peer_count))
+            except Exception:
+                pass
+
+        if(len(file_list_response["files"]) <= 0):
+            raise Exception("No peers listed for any file on tracker")
+
     except File.DoesNotExist:
         error = "No files listed on tracker"
         success = False
