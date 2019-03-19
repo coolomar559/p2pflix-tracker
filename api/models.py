@@ -1,4 +1,5 @@
 import datetime
+from operator import itemgetter
 import uuid
 
 from api import app, constants
@@ -282,6 +283,10 @@ def add_file(add_file_data, peer_ip):
     }
 
     try:
+
+        if(len(add_file_data["chunks"]) <= 0):
+            raise Exception("File is invalid, has no chunks")
+
         # if client has no guid, add them as a peer and generate a guid
         # else get the peer
         if(add_file_data["guid"] is None):
@@ -301,7 +306,7 @@ def add_file(add_file_data, peer_ip):
 
         # if the file doesn't exist, add the chunks to the db and associate them with the file
         if(file_created):
-            for chunk_data in add_file_data["chunks"]:
+            for chunk_data in sorted(add_file_data["chunks"], key=itemgetter('id')):
                 Chunk().create(
                     chunk_id=chunk_data["id"],
                     name=chunk_data["name"],
@@ -315,7 +320,21 @@ def add_file(add_file_data, peer_ip):
                 hosting_peer=peer,
             )
         else:
-            # TODO: if the file does exist, check that the submitted chunks match the existing chunks
+            # if the file does exist, check that the submitted chunks match the existing chunks
+            chunk_query = Chunk.select(Chunk.chunk_id, Chunk.chunk_hash, Chunk.name)\
+                            .join(File, on=(File.id == Chunk.parent_file))\
+                            .where(File.full_hash == add_file_data["full_hash"])
+
+            if(len(chunk_query) != len(add_file_data["chunks"])):
+                raise Exception("File invalid, chunks do not match tracker version")
+
+            for chunk_data, chunk_query_data in\
+                    zip(sorted(add_file_data["chunks"], key=itemgetter('id')), chunk_query):
+                if((chunk_data["id"] != chunk_query_data.chunk_id) or
+                   (chunk_data["name"] != chunk_query_data.name) or
+                   (chunk_data["hash"] != chunk_query_data.chunk_hash)):
+                    raise Exception("File invalid, chunks do not match tracker version")
+
             # add relationship for the file and client (if a relationship does not already exist)
             # else error
             _, host_created = Hosts().get_or_create(
