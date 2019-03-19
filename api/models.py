@@ -227,6 +227,7 @@ def add_file(add_file_data, peer_ip):
             peer = Peer.get(Peer.uuid == add_file_data["guid"])
             if(peer.ip != peer_ip):
                 peer.ip = peer_ip
+                peer.keep_alive_timestamp = datetime.datetime.now()
                 peer.save()
 
         # add the file to the db (or create new one if it didn't exist)
@@ -315,13 +316,21 @@ def keep_alive(keep_alive_data, peer_ip):
 
 # removes a peer from the hosts list of a file
 # if the file has no hosts remaining, removes it
-def deregister_file(deregister_file_data):
+def deregister_file(deregister_file_data, peer_ip):
     success = True
     deregister_file_response = {
         "success": success,
     }
 
     try:
+        # check if peer with guid exists, if so updates the peer's ip and timestamp
+        peer = Peer.get(Peer.uuid == deregister_file_data["guid"])
+        if(peer.ip != peer_ip):
+            peer.ip = peer_ip
+        peer.keep_alive_timestamp = datetime.datetime.now()
+        peer.save()
+
+        # checks if specified peer is hosting specified file, if so deletes the record
         host_relationship = Hosts.select()\
             .join(File, on=(File.id == Hosts.hosted_file))\
             .join(Peer, on=(Peer.id == Hosts.hosting_peer))\
@@ -333,6 +342,9 @@ def deregister_file(deregister_file_data):
         except Hosts.DoesNotExist:
             File.get(File.id == deregister_file_data["file_id"]).delete_instance()
 
+    except Peer.DoesNotExist:
+        error = "Peer with guid {} does not exist".format(deregister_file_data["guid"])
+        success = False
     except Hosts.DoesNotExist:
         error = "No peer with guid {} is currently hosting file with id {}"\
             .format(deregister_file_data["guid"], deregister_file_data["file_id"])

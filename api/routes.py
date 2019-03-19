@@ -265,6 +265,7 @@ def deregister_file():
     success = True
 
     request_data = request.get_json(silent=True)
+    requester_ip = request.remote_addr
 
     if(request_data is None):
         error = "Request is not JSON"
@@ -272,7 +273,7 @@ def deregister_file():
     else:
         try:
             validate(request_data, schemas.DEREGISTER_FILE_SCHEMA)
-            deregister_file_response = models.deregister_file(request_data)
+            deregister_file_response = models.deregister_file(request_data, requester_ip)
         except ValidationError as e:
             error = str(e)
             success = False
