@@ -40,7 +40,7 @@ def get_file_list():
 # TODO: consider replacing the id with the file's hash or to a json blob input to make it tracker independent
 # TODO: consider giving the chunk an id as well to make the chunk order clear
 # TODO: consider associating peers for each chunk
-# Gets the list of files the tracker knows about
+# Gets the information about a specific file id
 # --- INPUT ---
 # The file's id (as known by the tracker) via the url
 # --- OUTPUT ---
@@ -79,6 +79,49 @@ def get_file(file_id):
     get_file_response = models.get_file(file_id)
 
     return jsonify(get_file_response)
+
+
+# TODO: consider giving the chunk an id as well to make the chunk order clear
+# TODO: consider associating peers for each chunk
+# Gets the information about a specific file hash
+# --- INPUT ---
+# The file's id (as known by the tracker) via the url
+# --- OUTPUT ---
+# Returns a JSON blob of the form:
+'''
+{
+    "success": true,
+    "name": "<file name>",
+    "file_hash": "<hash of the full file>",
+    "peers": [
+        {"ip": "<peer's ip>"},
+        ...
+    ],
+    "chunks": [
+        {
+            "id": <chunk id for sequencing>,
+            "name": "<chunk filename>",
+            "hash": "<hash of chunk>"
+        },
+        ...
+    ]
+}
+'''
+# --- ON ERROR ---
+# Returns a JSON blob in the form:
+'''
+{
+    "success" : false,
+    "error" : "<error reason>",
+}
+'''
+@app.route('/file_by_hash/<file_full_hash>', methods=['GET'])
+def get_file_by_hash(file_full_hash):
+    # pull the file metadata from the db (name, list of peers, list of chunks, etc)
+
+    get_file_by_hash_response = models.get_file_by_hash(file_full_hash)
+
+    return jsonify(get_file_by_hash_response)
 
 
 # Gets the list of other trackers the tracker knows about

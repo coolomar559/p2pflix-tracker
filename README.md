@@ -40,20 +40,21 @@ By default the tracker will load setting from `config.toml`.
 Currently uses port `42069` by default, but will use the port specified in the config file.
 
 ## Endpoints
-* GET - /list_files
+* GET - /file_list
 * GET - /file/<file_id>
+* GET - /file_by_hash/<file_full_hash>
 * GET - /tracker_list
 * POST - /add_file
 * PUT - /keep_alive
 * DELETE - /deregister_file
 
-## GET - /list_files
+## GET - /file_list
 Gets the list of files that the tracker knows about.
 
 ### Input
 GET request to the endpoint url.
 
-Ex: `localhost:42069/list_files`
+Ex: `localhost:42069/file_list`
 
 ### Output
 JSON object in the form:
@@ -87,6 +88,49 @@ Gets the information about a specified file, including peers hosting it and its 
 GET request to the endpoint url, containing the file's id in the url.
 
 Ex: `localhost:42069/file/2`
+
+### Output
+JSON object in the form:
+```python
+{
+    "success": true,    #boolean
+    "name": "<file name>", #string
+    "file_hash": "<hash of the full file>",    #string (sha256 hash)
+    "peers": [
+        {
+            "ip": "<peer's ip>" #string 
+        },
+        ...
+    ],
+    "chunks": [
+        {
+            "id": <chunk id for sequencing>,    #integer
+            "name": "<chunk filename>", #string
+            "hash": "<hash of chunk>"   #string (sha256 hash)
+        },
+        ...
+    ]
+}
+```
+
+### On Error
+JSON object in the form:
+```python
+{
+    "success": false,   #boolean
+    "error": "<error reason>"   #string
+}
+```
+
+## GET - /file_by_hash/<file_full_hash>
+Gets the information about a specified file, including peers hosting it and its chunks.
+
+### Input
+GET request to the endpoint url, containing the file's full hash in the url.
+
+If there are somehow multiple files with the same hash, returns the first one.
+
+Ex: `localhost:42069/file_by_hash/lkjlkjalijfljsdll9823`
 
 ### Output
 JSON object in the form:
