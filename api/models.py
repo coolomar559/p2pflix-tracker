@@ -309,13 +309,22 @@ def add_file(add_file_data, peer_ip):
                     parent_file=new_file,
                 )
 
-        # TODO: if the file does exist, check that the submitted chunks match the existing chunks
+            # add relationship for the file and client
+            Hosts().create(
+                hosted_file=new_file,
+                hosting_peer=peer,
+            )
+        else:
+            # TODO: if the file does exist, check that the submitted chunks match the existing chunks
+            # add relationship for the file and client (if a relationship does not already exist)
+            # else error
+            _, host_created = Hosts().get_or_create(
+                hosted_file=new_file,
+                hosting_peer=peer,
+            )
 
-        # add relationship for the file and client (if a relationship does not already exist)
-        Hosts().get_or_create(
-            hosted_file=new_file,
-            hosting_peer=peer,
-        )
+            if(not host_created):
+                raise Exception("Peer with guid {} (you) is already hosting this file".format(add_file_data["guid"]))
 
         add_file_response["file_id"] = new_file.id
         add_file_response["guid"] = peer.uuid
