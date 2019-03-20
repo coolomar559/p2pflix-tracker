@@ -84,3 +84,25 @@ DEREGISTER_FILE_SCHEMA = {
     },
     "required": ["file_id", "guid", "seq_number"],
 }
+
+
+# --- DEREGISTER_FILE_BY_HASH SCHEMA ---
+# JSON schema for /deregister_file_by_hash endpoint inputs
+# Example:
+'''
+{
+    "file_hash" : <full hash of the file>,
+    "guid" : "<client's guid>",
+    "seq_number": <client's current sequence number/sequence number of this message>
+}
+'''
+DEREGISTER_FILE_BY_HASH_SCHEMA = {
+    "type": "object",
+    "maxProperties": 3,
+    "properties": {
+        "file_hash": {"type": "string"},
+        "guid": {"type": "string"},
+        "seq_number": {"type": "integer"},
+    },
+    "required": ["file_hash", "guid", "seq_number"],
+}

@@ -320,6 +320,42 @@ JSON object in the form:
 }
 ```
 
+## POST - /deregister_file_by_hash
+Removes you as a host for the specified file.
+Requires a guid.
+If a file has no hosts remaining, removes it.
+
+### Input
+DELETE request to the endpoint url with a JSON object.
+
+Ex: `localhost:42069/keep_alive`
+
+JSON object in the form:
+```python
+{
+    "file_hash": <files full hash>,   #integer
+    "guid": "<client's guid>",   #string
+    "seq_number": <clients current sequence number/sequence number of this message> #integer
+}
+```
+
+### Output
+JSON object in the form:
+```python
+{
+    "success": true   #boolean
+}
+```
+
+### On Error
+JSON object in the form:
+```python
+{
+    "success": false,   #boolean
+    "error": "<error reason>"   #string
+}
+```
+
 ## UPDATE - /tracker_sync
 Send/receive an information update to/from another tracker.
 If the tracker has seen the event already, it ignores it. If the tracker has not seen the

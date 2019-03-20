@@ -281,7 +281,6 @@ def keep_alive():
 
 # removes you as a host for this file
 # takes a json req with the client's guid and the file id as args
-# TODO: consider replacing the file id with a hash to make it tracker independent
 # --- INPUT ---
 # Expects JSON blob in the form:
 '''
@@ -334,3 +333,59 @@ def deregister_file():
         }
 
     return jsonify(deregister_file_response)
+
+
+# removes you as a host for this file
+# takes a json req with the client's guid and the file's full hash as args
+# --- INPUT ---
+# Expects JSON blob in the form:
+'''
+{
+    "file_hash": <file's full hash>,
+    "guid": "<client's guid>",
+    "seq_number": <client's current sequence number/sequence number of this message>
+}
+'''
+# --- OUTPUT ---
+# Returns a JSON blob in the form:
+'''
+{
+    "success": true
+}
+'''
+# --- ON ERROR ---
+# Returns a JSON blob in the form:
+'''
+{
+    "success": false,
+    "error": "<error reason>"
+}
+'''
+@app.route('/deregister_file_by_hash', methods=['DELETE'])
+def deregister_file_by_hash():
+    success = True
+
+    request_data = request.get_json(silent=True)
+    requester_ip = request.remote_addr
+
+    if(request_data is None):
+        error = "Request is not JSON"
+        success = False
+    else:
+        try:
+            validate(request_data, schemas.DEREGISTER_FILE_BY_HASH_SCHEMA)
+            deregister_file_by_hash_response = models.deregister_file_by_hash(request_data, requester_ip)
+        except ValidationError as e:
+            error = str(e)
+            success = False
+        except Exception as e:
+            error = str(e)
+            success = False
+
+    if(not success):
+        deregister_file_by_hash_response = {
+            "success": success,
+            "error": error,
+        }
+
+    return jsonify(deregister_file_by_hash_response)

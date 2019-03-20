@@ -466,6 +466,7 @@ def deregister_file(deregister_file_data, peer_ip):
             .where(Peer.uuid == deregister_file_data["guid"] and File.id == deregister_file_data["file_id"]).get()
         host_relationship.delete_instance()
 
+        # if there is no one hosting the file, delete it
         try:
             Hosts.get(Hosts.hosted_file == deregister_file_data["file_id"])
         except Hosts.DoesNotExist:
@@ -493,6 +494,70 @@ def deregister_file(deregister_file_data, peer_ip):
         }
 
     return deregister_file_response
+
+
+# removes a peer from the hosts list of a file
+# if the file has no hosts remaining, removes it
+def deregister_file_by_hash(deregister_file_by_hash_data, peer_ip):
+    success = True
+    deregister_file_by_hash_response = {
+        "success": success,
+    }
+
+    try:
+        # check if peer with guid exists, if so updates the peer's ip and timestamp
+        peer = Peer.get(Peer.uuid == deregister_file_by_hash_data["guid"])
+        if(peer.ip != peer_ip):
+            peer.ip = peer_ip
+        peer.keep_alive_timestamp = datetime.datetime.now()
+        peer.save()
+
+        if(peer.expected_seq_number != deregister_file_by_hash_data["seq_number"]):
+            raise Exception("Peer is expecting sequence number {} (sequence number {} was sent"
+                            .format(peer.expected_seq_number, deregister_file_by_hash_data["seq_number"]))
+
+        # checks if specified peer is hosting specified file, if so deletes the record
+        host_relationship = Hosts.select()\
+            .join(File, on=(File.id == Hosts.hosted_file))\
+            .join(Peer, on=(Peer.id == Hosts.hosting_peer))\
+            .where(Peer.uuid == deregister_file_by_hash_data["guid"] and
+                   File.full_hash == deregister_file_by_hash_data["file_hash"])\
+            .get()
+        host_relationship.delete_instance()
+
+        # if there is no one hosting the file, delete it
+        try:
+            Hosts.select()\
+                .join(File, on=(File.id == Hosts.hosted_file))\
+                .where(File.full_hash == deregister_file_by_hash_data["file_hash"] and
+                       Hosts.hosted_file == File.id)\
+                .get()
+        except Hosts.DoesNotExist:
+            File.get(File.full_hash == deregister_file_by_hash_data["file_hash"]).delete_instance()
+
+        # increment the peer's expected seq number
+        peer.expected_seq_number += 1
+        peer.save()
+
+    except Peer.DoesNotExist:
+        error = "Peer with guid {} does not exist".format(deregister_file_by_hash_data["guid"])
+        success = False
+    except Hosts.DoesNotExist:
+        error = "No peer with guid {} is currently hosting file with hash {}"\
+            .format(deregister_file_by_hash_data["guid"], deregister_file_by_hash_data["file_hash"])
+        success = False
+    except Exception as e:
+        error = str(e)
+        success = False
+        print(e)
+
+    if(not success):
+        deregister_file_by_hash_response = {
+            "success": success,
+            "error": error,
+        }
+
+    return deregister_file_by_hash_response
 
 
 # Decorators to explicitly manage connections
