@@ -14,12 +14,13 @@
         },
         ...
     ],
-    "guid" : "<client's guid>"
+    "guid" : "<client's guid>",
+    "seq_number": <client's current sequence number/sequence number of this message>
 }
 '''
 ADD_FILE_SCHEMA = {
     "type": "object",
-    "maxProperties": 4,
+    "maxProperties": 5,
     "properties": {
         "name": {"type": "string"},
         "full_hash": {"type": "string"},
@@ -39,8 +40,9 @@ ADD_FILE_SCHEMA = {
             },
         },
         "guid": {"type": ["string", "null"]},
+        "seq_number": {"type": "integer"},
     },
-    "required": ["name", "full_hash", "chunks", "guid"],
+    "required": ["name", "full_hash", "chunks", "guid", "seq_number"],
 }
 
 
@@ -68,15 +70,17 @@ KEEP_ALIVE_SCHEMA = {
 '''
 {
     "file_id" : <file's id in the tracker db>,
-    "guid" : "<client's guid>"
+    "guid" : "<client's guid>",
+    "seq_number": <client's current sequence number/sequence number of this message>
 }
 '''
 DEREGISTER_FILE_SCHEMA = {
     "type": "object",
-    "maxProperties": 2,
+    "maxProperties": 3,
     "properties": {
         "file_id": {"type": "integer"},
         "guid": {"type": "string"},
+        "seq_number": {"type": "integer"},
     },
-    "required": ["file_id", "guid"],
+    "required": ["file_id", "guid", "seq_number"],
 }

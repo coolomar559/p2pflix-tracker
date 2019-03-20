@@ -47,6 +47,7 @@ Currently uses port `42069` by default, but will use the port specified in the c
 * POST - /add_file
 * PUT - /keep_alive
 * DELETE - /deregister_file
+* DELETE - /deregister_file_by_hash
 * UPDATE - /tracker_sync
 * POST - /new_tracker
 
@@ -68,7 +69,7 @@ JSON object in the form:
             "id": <file id>,    #integer
             "name": "<file's name>",   #string
             "hash": "<full file hash>", #base64 string
-            "peer_count": <number of recently keepalived peers> #integer
+            "active_peers": <number of recently keepalived peers> #integer
         },
         ...
     ]
@@ -226,7 +227,7 @@ JSON object in the form:
         ...
     ],
     "guid": "<client's guid>"/null,   #string or null
-    "sequence": <sequence number>   #integer
+    "seq_number": <clients current sequence number/sequence number of this message> #integer
 }
 ```
 
@@ -236,7 +237,7 @@ JSON object in the form:
 {
     "success": true,    #boolean
     "file_id": <the existing id if the tracker already has it, or the new one if it didnt>,   #integer
-    "guid": "<echoed guid if you had one already, otherwise your newly assigned one"    #string
+    "guid": "<echoed guid if you had one already, otherwise your newly assigned one>"    #string
 }
 ```
 
@@ -298,7 +299,7 @@ JSON object in the form:
 {
     "file_id": <files id in the tracker db>,   #integer
     "guid": "<client's guid>",   #string
-    "sequence": <sequence number>   #integer
+    "seq_number": <clients current sequence number/sequence number of this message> #integer
 }
 ```
 

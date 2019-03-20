@@ -32,6 +32,7 @@ class Peer(BaseModel):
     ip = peewee.CharField()
     uuid = peewee.UUIDField()
     keep_alive_timestamp = peewee.DateTimeField(default=datetime.datetime.now)
+    expected_seq_number = peewee.IntegerField(default=0)
 
     def to_dict_simple(self):
         output_dict = {
@@ -59,7 +60,7 @@ class File(BaseModel):
             "id": self.id,
             "name": self.name,
             "full_hash": self.full_hash,
-            "peer_count": peer_count,
+            "active_peers": peer_count,
         }
 
         return output_dict
@@ -308,20 +309,24 @@ def add_file(add_file_data, peer_ip):
     }
 
     try:
-
         if(len(add_file_data["chunks"]) <= 0):
             raise Exception("File is invalid, has no chunks")
 
-        # if client has no guid, add them as a peer and generate a guid
+        # if client has no guid, add them as a peer, generate a guid, and set their sequence number
         # else get the peer
         if(add_file_data["guid"] is None):
             peer = add_peer(peer_ip)
+            peer.expected_seq_number = add_file_data["seq_number"]
         else:
             peer = Peer.get(Peer.uuid == add_file_data["guid"])
             if(peer.ip != peer_ip):
                 peer.ip = peer_ip
                 peer.keep_alive_timestamp = datetime.datetime.now()
                 peer.save()
+
+        if(peer.expected_seq_number != add_file_data["seq_number"]):
+            raise Exception("Peer is expecting sequence number {} (sequence number {} was sent)"
+                            .format(peer.expected_seq_number, add_file_data["seq_number"]))
 
         # add the file to the db (or create new one if it didn't exist)
         new_file, file_created = File().get_or_create(
@@ -369,6 +374,10 @@ def add_file(add_file_data, peer_ip):
 
             if(not host_created):
                 raise Exception("Peer with guid {} (you) is already hosting this file".format(add_file_data["guid"]))
+
+        # increment the peer's expected seq number
+        peer.expected_seq_number += 1
+        peer.save()
 
         add_file_response["file_id"] = new_file.id
         add_file_response["guid"] = peer.uuid
@@ -446,6 +455,10 @@ def deregister_file(deregister_file_data, peer_ip):
         peer.keep_alive_timestamp = datetime.datetime.now()
         peer.save()
 
+        if(peer.expected_seq_number != deregister_file_data["seq_number"]):
+            raise Exception("Peer is expecting sequence number {} (sequence number {} was sent"
+                            .format(peer.expected_seq_number, deregister_file_data["seq_number"]))
+
         # checks if specified peer is hosting specified file, if so deletes the record
         host_relationship = Hosts.select()\
             .join(File, on=(File.id == Hosts.hosted_file))\
@@ -457,6 +470,10 @@ def deregister_file(deregister_file_data, peer_ip):
             Hosts.get(Hosts.hosted_file == deregister_file_data["file_id"])
         except Hosts.DoesNotExist:
             File.get(File.id == deregister_file_data["file_id"]).delete_instance()
+
+        # increment the peer's expected seq number
+        peer.expected_seq_number += 1
+        peer.save()
 
     except Peer.DoesNotExist:
         error = "Peer with guid {} does not exist".format(deregister_file_data["guid"])

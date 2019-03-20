@@ -15,7 +15,7 @@ from jsonschema import validate, ValidationError
             "id": <file id>,
             "name": "<file's name>",
             "hash": "<full file hash>",
-            "peer_count": <number of recently keepalived peer>
+            "active_peers": <number of recently keepalived peer>
         },
         ...
     ]
@@ -173,7 +173,8 @@ def get_tracker_list():
         },
         ...
     ],
-    "guid": "<client's guid>"
+    "guid": "<client's guid>",
+    "seq_number": <client's current sequence number/sequence number of this message>
 }
 '''
 # --- OUTPUT ---
@@ -286,7 +287,8 @@ def keep_alive():
 '''
 {
     "file_id": <file's id in the tracker db>,
-    "guid": "<client's guid>"
+    "guid": "<client's guid>",
+    "seq_number": <client's current sequence number/sequence number of this message>
 }
 '''
 # --- OUTPUT ---
