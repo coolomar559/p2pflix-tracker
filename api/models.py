@@ -1,8 +1,10 @@
 import datetime
+from operator import itemgetter
 import uuid
 
-from api import app
+from api import app, constants
 import peewee
+from peewee import fn
 
 db = peewee.SqliteDatabase(None)
 
@@ -30,6 +32,7 @@ class Peer(BaseModel):
     ip = peewee.CharField()
     uuid = peewee.UUIDField()
     keep_alive_timestamp = peewee.DateTimeField(default=datetime.datetime.now)
+    expected_seq_number = peewee.IntegerField(default=0)
 
     def to_dict_simple(self):
         output_dict = {
@@ -48,6 +51,16 @@ class File(BaseModel):
             "id": self.id,
             "name": self.name,
             "full_hash": self.full_hash,
+        }
+
+        return output_dict
+
+    def to_dict_full(self, peer_count):
+        output_dict = {
+            "id": self.id,
+            "name": self.name,
+            "full_hash": self.full_hash,
+            "active_peers": peer_count,
         }
 
         return output_dict
@@ -124,7 +137,6 @@ def get_tracker_list():
 
 
 # returns the file list on the tracker as a dict in the specified output format
-# TODO: only return files that have a recent timestamped peer
 def get_file_list():
     success = True
     file_list_response = {
@@ -137,8 +149,23 @@ def get_file_list():
         if(not file_list_query.exists()):
             raise File.DoesNotExist
 
+        timeout_time = datetime.datetime.now() - constants.KEEP_ALIVE_TIMEOUT
         for file in file_list_query:
-            file_list_response["files"].append(file.to_dict_simple())
+            try:
+                peer_query = Peer.select(fn.COUNT(Peer.id).alias("peer_count"))\
+                    .join(Hosts, on=(Peer.id == Hosts.hosting_peer))\
+                    .join(File, on=(File.id == Hosts.hosted_file))\
+                    .where((File.full_hash == file.full_hash) &
+                           (Peer.keep_alive_timestamp >= timeout_time))\
+                    .get()
+
+                file_list_response["files"].append(file.to_dict_full(peer_query.peer_count))
+            except Exception:
+                pass
+
+        if(len(file_list_response["files"]) <= 0):
+            raise Exception("No peers listed for any file on tracker")
+
     except File.DoesNotExist:
         error = "No files listed on tracker"
         success = False
@@ -175,10 +202,15 @@ def get_file(file_id):
             .join(File, on=(File.id == Chunk.parent_file))\
             .where(File.id == file_id)
 
+        timeout_time = datetime.datetime.now() - constants.KEEP_ALIVE_TIMEOUT
         peer_query = Peer.select(Peer.ip)\
             .join(Hosts, on=(Peer.id == Hosts.hosting_peer))\
             .join(File, on=(File.id == Hosts.hosted_file))\
-            .where(File.id == file_id)
+            .where((File.id == file_id) &
+                   (Peer.keep_alive_timestamp >= timeout_time))
+
+        if(len(peer_query) == 0):
+            raise Exception("File has no hosting peers currently online")
 
         for chunk in chunk_query:
             get_file_response["chunks"].append(chunk.to_dict())
@@ -208,6 +240,64 @@ def get_file(file_id):
     return get_file_response
 
 
+# returns the data for a specific file hash
+def get_file_by_hash(file_full_hash):
+    success = True
+    get_file_by_hash_response = {
+        "success": success,
+        "name": None,
+        "full_hash": None,
+        "chunks": [],
+        "peers": [],
+    }
+
+    try:
+        file_query = File.select(File.name, File.full_hash).where(File.full_hash == file_full_hash).get()
+        get_file_by_hash_response["name"] = file_query.name
+        get_file_by_hash_response["full_hash"] = file_query.full_hash
+
+        chunk_query = Chunk.select(Chunk.chunk_id, Chunk.chunk_hash, Chunk.name)\
+            .join(File, on=(File.id == Chunk.parent_file))\
+            .where(File.full_hash == file_full_hash)
+
+        timeout_time = datetime.datetime.now() - constants.KEEP_ALIVE_TIMEOUT
+        peer_query = Peer.select(Peer.ip)\
+            .join(Hosts, on=(Peer.id == Hosts.hosting_peer))\
+            .join(File, on=(File.id == Hosts.hosted_file))\
+            .where((File.full_hash == file_full_hash) &
+                   (Peer.keep_alive_timestamp >= timeout_time))
+
+        if(len(peer_query) == 0):
+            raise Exception("File has no hosting peers currently online")
+
+        for chunk in chunk_query:
+            get_file_by_hash_response["chunks"].append(chunk.to_dict())
+
+        for peer in peer_query:
+            get_file_by_hash_response["peers"].append(peer.to_dict_simple())
+
+    except File.DoesNotExist:
+        error = "File with hash {} does not exist".format(file_full_hash)
+        success = False
+    except Chunk.DoesNotExist:
+        error = "File is invalid, has no chunks"
+        success = False
+    except Peer.DoesNotExist:
+        error = "File has no hosting peers"
+        success = False
+    except Exception as e:
+        error = str(e)
+        success = False
+
+    if(not success):
+        get_file_by_hash_response = {
+            "success": success,
+            "error": error,
+        }
+
+    return get_file_by_hash_response
+
+
 # TODO: need to check if chunk hashes match if the file already exists
 #       shouldnt be adding chunks to existing files
 def add_file(add_file_data, peer_ip):
@@ -219,15 +309,24 @@ def add_file(add_file_data, peer_ip):
     }
 
     try:
-        # if client has no guid, add them as a peer and generate a guid
+        if(len(add_file_data["chunks"]) <= 0):
+            raise Exception("File is invalid, has no chunks")
+
+        # if client has no guid, add them as a peer, generate a guid, and set their sequence number
         # else get the peer
         if(add_file_data["guid"] is None):
             peer = add_peer(peer_ip)
+            peer.expected_seq_number = add_file_data["seq_number"]
         else:
             peer = Peer.get(Peer.uuid == add_file_data["guid"])
             if(peer.ip != peer_ip):
                 peer.ip = peer_ip
+                peer.keep_alive_timestamp = datetime.datetime.now()
                 peer.save()
+
+        if(peer.expected_seq_number != add_file_data["seq_number"]):
+            raise Exception("Peer is expecting sequence number {} (sequence number {} was sent)"
+                            .format(peer.expected_seq_number, add_file_data["seq_number"]))
 
         # add the file to the db (or create new one if it didn't exist)
         new_file, file_created = File().get_or_create(
@@ -237,7 +336,7 @@ def add_file(add_file_data, peer_ip):
 
         # if the file doesn't exist, add the chunks to the db and associate them with the file
         if(file_created):
-            for chunk_data in add_file_data["chunks"]:
+            for chunk_data in sorted(add_file_data["chunks"], key=itemgetter('id')):
                 Chunk().create(
                     chunk_id=chunk_data["id"],
                     name=chunk_data["name"],
@@ -245,13 +344,40 @@ def add_file(add_file_data, peer_ip):
                     parent_file=new_file,
                 )
 
-        # TODO: if the file does exist, check that the submitted chunks match the existing chunks
+            # add relationship for the file and client
+            Hosts().create(
+                hosted_file=new_file,
+                hosting_peer=peer,
+            )
+        else:
+            # if the file does exist, check that the submitted chunks match the existing chunks
+            chunk_query = Chunk.select(Chunk.chunk_id, Chunk.chunk_hash, Chunk.name)\
+                            .join(File, on=(File.id == Chunk.parent_file))\
+                            .where(File.full_hash == add_file_data["full_hash"])
 
-        # add relationship for the file and client (if a relationship does not already exist)
-        Hosts().get_or_create(
-            hosted_file=new_file,
-            hosting_peer=peer,
-        )
+            if(len(chunk_query) != len(add_file_data["chunks"])):
+                raise Exception("File invalid, chunks do not match tracker version")
+
+            for chunk_data, chunk_query_data in\
+                    zip(sorted(add_file_data["chunks"], key=itemgetter('id')), chunk_query):
+                if((chunk_data["id"] != chunk_query_data.chunk_id) or
+                   (chunk_data["name"] != chunk_query_data.name) or
+                   (chunk_data["hash"] != chunk_query_data.chunk_hash)):
+                    raise Exception("File invalid, chunks do not match tracker version")
+
+            # add relationship for the file and client (if a relationship does not already exist)
+            # else error
+            _, host_created = Hosts().get_or_create(
+                hosted_file=new_file,
+                hosting_peer=peer,
+            )
+
+            if(not host_created):
+                raise Exception("Peer with guid {} (you) is already hosting this file".format(add_file_data["guid"]))
+
+        # increment the peer's expected seq number
+        peer.expected_seq_number += 1
+        peer.save()
 
         add_file_response["file_id"] = new_file.id
         add_file_response["guid"] = peer.uuid
@@ -315,24 +441,44 @@ def keep_alive(keep_alive_data, peer_ip):
 
 # removes a peer from the hosts list of a file
 # if the file has no hosts remaining, removes it
-def deregister_file(deregister_file_data):
+def deregister_file(deregister_file_data, peer_ip):
     success = True
     deregister_file_response = {
         "success": success,
     }
 
     try:
+        # check if peer with guid exists, if so updates the peer's ip and timestamp
+        peer = Peer.get(Peer.uuid == deregister_file_data["guid"])
+        if(peer.ip != peer_ip):
+            peer.ip = peer_ip
+        peer.keep_alive_timestamp = datetime.datetime.now()
+        peer.save()
+
+        if(peer.expected_seq_number != deregister_file_data["seq_number"]):
+            raise Exception("Peer is expecting sequence number {} (sequence number {} was sent"
+                            .format(peer.expected_seq_number, deregister_file_data["seq_number"]))
+
+        # checks if specified peer is hosting specified file, if so deletes the record
         host_relationship = Hosts.select()\
             .join(File, on=(File.id == Hosts.hosted_file))\
             .join(Peer, on=(Peer.id == Hosts.hosting_peer))\
             .where(Peer.uuid == deregister_file_data["guid"] and File.id == deregister_file_data["file_id"]).get()
         host_relationship.delete_instance()
 
+        # if there is no one hosting the file, delete it
         try:
             Hosts.get(Hosts.hosted_file == deregister_file_data["file_id"])
         except Hosts.DoesNotExist:
             File.get(File.id == deregister_file_data["file_id"]).delete_instance()
 
+        # increment the peer's expected seq number
+        peer.expected_seq_number += 1
+        peer.save()
+
+    except Peer.DoesNotExist:
+        error = "Peer with guid {} does not exist".format(deregister_file_data["guid"])
+        success = False
     except Hosts.DoesNotExist:
         error = "No peer with guid {} is currently hosting file with id {}"\
             .format(deregister_file_data["guid"], deregister_file_data["file_id"])
@@ -348,6 +494,70 @@ def deregister_file(deregister_file_data):
         }
 
     return deregister_file_response
+
+
+# removes a peer from the hosts list of a file
+# if the file has no hosts remaining, removes it
+def deregister_file_by_hash(deregister_file_by_hash_data, peer_ip):
+    success = True
+    deregister_file_by_hash_response = {
+        "success": success,
+    }
+
+    try:
+        # check if peer with guid exists, if so updates the peer's ip and timestamp
+        peer = Peer.get(Peer.uuid == deregister_file_by_hash_data["guid"])
+        if(peer.ip != peer_ip):
+            peer.ip = peer_ip
+        peer.keep_alive_timestamp = datetime.datetime.now()
+        peer.save()
+
+        if(peer.expected_seq_number != deregister_file_by_hash_data["seq_number"]):
+            raise Exception("Peer is expecting sequence number {} (sequence number {} was sent"
+                            .format(peer.expected_seq_number, deregister_file_by_hash_data["seq_number"]))
+
+        # checks if specified peer is hosting specified file, if so deletes the record
+        host_relationship = Hosts.select()\
+            .join(File, on=(File.id == Hosts.hosted_file))\
+            .join(Peer, on=(Peer.id == Hosts.hosting_peer))\
+            .where(Peer.uuid == deregister_file_by_hash_data["guid"] and
+                   File.full_hash == deregister_file_by_hash_data["file_hash"])\
+            .get()
+        host_relationship.delete_instance()
+
+        # if there is no one hosting the file, delete it
+        try:
+            Hosts.select()\
+                .join(File, on=(File.id == Hosts.hosted_file))\
+                .where(File.full_hash == deregister_file_by_hash_data["file_hash"] and
+                       Hosts.hosted_file == File.id)\
+                .get()
+        except Hosts.DoesNotExist:
+            File.get(File.full_hash == deregister_file_by_hash_data["file_hash"]).delete_instance()
+
+        # increment the peer's expected seq number
+        peer.expected_seq_number += 1
+        peer.save()
+
+    except Peer.DoesNotExist:
+        error = "Peer with guid {} does not exist".format(deregister_file_by_hash_data["guid"])
+        success = False
+    except Hosts.DoesNotExist:
+        error = "No peer with guid {} is currently hosting file with hash {}"\
+            .format(deregister_file_by_hash_data["guid"], deregister_file_by_hash_data["file_hash"])
+        success = False
+    except Exception as e:
+        error = str(e)
+        success = False
+        print(e)
+
+    if(not success):
+        deregister_file_by_hash_response = {
+            "success": success,
+            "error": error,
+        }
+
+    return deregister_file_by_hash_response
 
 
 # Decorators to explicitly manage connections

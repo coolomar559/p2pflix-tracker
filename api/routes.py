@@ -14,7 +14,8 @@ from jsonschema import validate, ValidationError
         {
             "id": <file id>,
             "name": "<file's name>",
-            "hash": "<full file hash>"
+            "hash": "<full file hash>",
+            "active_peers": <number of recently keepalived peer>
         },
         ...
     ]
@@ -40,7 +41,7 @@ def get_file_list():
 # TODO: consider replacing the id with the file's hash or to a json blob input to make it tracker independent
 # TODO: consider giving the chunk an id as well to make the chunk order clear
 # TODO: consider associating peers for each chunk
-# Gets the list of files the tracker knows about
+# Gets the information about a specific file id
 # --- INPUT ---
 # The file's id (as known by the tracker) via the url
 # --- OUTPUT ---
@@ -79,6 +80,49 @@ def get_file(file_id):
     get_file_response = models.get_file(file_id)
 
     return jsonify(get_file_response)
+
+
+# TODO: consider giving the chunk an id as well to make the chunk order clear
+# TODO: consider associating peers for each chunk
+# Gets the information about a specific file hash
+# --- INPUT ---
+# The file's id (as known by the tracker) via the url
+# --- OUTPUT ---
+# Returns a JSON blob of the form:
+'''
+{
+    "success": true,
+    "name": "<file name>",
+    "file_hash": "<hash of the full file>",
+    "peers": [
+        {"ip": "<peer's ip>"},
+        ...
+    ],
+    "chunks": [
+        {
+            "id": <chunk id for sequencing>,
+            "name": "<chunk filename>",
+            "hash": "<hash of chunk>"
+        },
+        ...
+    ]
+}
+'''
+# --- ON ERROR ---
+# Returns a JSON blob in the form:
+'''
+{
+    "success" : false,
+    "error" : "<error reason>",
+}
+'''
+@app.route('/file_by_hash/<file_full_hash>', methods=['GET'])
+def get_file_by_hash(file_full_hash):
+    # pull the file metadata from the db (name, list of peers, list of chunks, etc)
+
+    get_file_by_hash_response = models.get_file_by_hash(file_full_hash)
+
+    return jsonify(get_file_by_hash_response)
 
 
 # Gets the list of other trackers the tracker knows about
@@ -129,7 +173,8 @@ def get_tracker_list():
         },
         ...
     ],
-    "guid": "<client's guid>"
+    "guid": "<client's guid>",
+    "seq_number": <client's current sequence number/sequence number of this message>
 }
 '''
 # --- OUTPUT ---
@@ -236,13 +281,13 @@ def keep_alive():
 
 # removes you as a host for this file
 # takes a json req with the client's guid and the file id as args
-# TODO: consider replacing the file id with a hash to make it tracker independent
 # --- INPUT ---
 # Expects JSON blob in the form:
 '''
 {
     "file_id": <file's id in the tracker db>,
-    "guid": "<client's guid>"
+    "guid": "<client's guid>",
+    "seq_number": <client's current sequence number/sequence number of this message>
 }
 '''
 # --- OUTPUT ---
@@ -265,6 +310,7 @@ def deregister_file():
     success = True
 
     request_data = request.get_json(silent=True)
+    requester_ip = request.remote_addr
 
     if(request_data is None):
         error = "Request is not JSON"
@@ -272,7 +318,7 @@ def deregister_file():
     else:
         try:
             validate(request_data, schemas.DEREGISTER_FILE_SCHEMA)
-            deregister_file_response = models.deregister_file(request_data)
+            deregister_file_response = models.deregister_file(request_data, requester_ip)
         except ValidationError as e:
             error = str(e)
             success = False
@@ -287,3 +333,59 @@ def deregister_file():
         }
 
     return jsonify(deregister_file_response)
+
+
+# removes you as a host for this file
+# takes a json req with the client's guid and the file's full hash as args
+# --- INPUT ---
+# Expects JSON blob in the form:
+'''
+{
+    "file_hash": <file's full hash>,
+    "guid": "<client's guid>",
+    "seq_number": <client's current sequence number/sequence number of this message>
+}
+'''
+# --- OUTPUT ---
+# Returns a JSON blob in the form:
+'''
+{
+    "success": true
+}
+'''
+# --- ON ERROR ---
+# Returns a JSON blob in the form:
+'''
+{
+    "success": false,
+    "error": "<error reason>"
+}
+'''
+@app.route('/deregister_file_by_hash', methods=['DELETE'])
+def deregister_file_by_hash():
+    success = True
+
+    request_data = request.get_json(silent=True)
+    requester_ip = request.remote_addr
+
+    if(request_data is None):
+        error = "Request is not JSON"
+        success = False
+    else:
+        try:
+            validate(request_data, schemas.DEREGISTER_FILE_BY_HASH_SCHEMA)
+            deregister_file_by_hash_response = models.deregister_file_by_hash(request_data, requester_ip)
+        except ValidationError as e:
+            error = str(e)
+            success = False
+        except Exception as e:
+            error = str(e)
+            success = False
+
+    if(not success):
+        deregister_file_by_hash_response = {
+            "success": success,
+            "error": error,
+        }
+
+    return jsonify(deregister_file_by_hash_response)
