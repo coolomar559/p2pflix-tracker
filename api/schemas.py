@@ -56,11 +56,12 @@ ADD_FILE_SCHEMA = {
 '''
 KEEP_ALIVE_SCHEMA = {
     "type": "object",
-    "maxProperties": 1,
+    "maxProperties": 2,
     "properties": {
         "guid": {"type": "string"},
+        "ka_seq_number": {"type": "integer"},
     },
-    "required": ["guid"],
+    "required": ["guid", "ka_seq_number"],
 }
 
 

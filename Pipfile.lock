@@ -1,11 +1,11 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "642ae9f7d628e4b1ce155bb7b40779d7c70d4e2a0b9ff0982cc0ca6d1d73373e"
+            "sha256": "43fc7c1640a3ec0aff91718858eb1d8e1afff37a818da849c6b635862c13f53e"
         },
         "pipfile-spec": 6,
         "requires": {
-            "python_version": "3.7"
+            "python_version": "3"
         },
         "sources": [
             {
@@ -95,10 +95,10 @@
         },
         "peewee": {
             "hashes": [
-                "sha256:074331625cf4335a27af3a8f644eabe2858cd3fc91fa95a7f18db16bd640f7cc"
+                "sha256:603337153536b85c3c5b5e84df4ae0f9cbaff09163a3739451d167e0ad3fe1f7"
             ],
             "index": "pypi",
-            "version": "==3.9.2"
+            "version": "==3.9.3"
         },
         "pyrsistent": {
             "hashes": [
@@ -123,10 +123,10 @@
         },
         "werkzeug": {
             "hashes": [
-                "sha256:c3fd7a7d41976d9f44db327260e263132466836cef6f91512889ed60ad26557c",
-                "sha256:d5da73735293558eb1651ee2fddc4d0dedcfa06538b8813a2e20011583c9e49b"
+                "sha256:96da23fa8ccecbc3ae832a83df5c722c11547d021637faacb0bec4dd2f4666c8",
+                "sha256:ca5c2dcd367d6c0df87185b9082929d255358f5391923269335782b213d52655"
             ],
-            "version": "==0.14.1"
+            "version": "==0.15.1"
         }
     },
     "develop": {

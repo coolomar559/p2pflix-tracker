@@ -231,7 +231,8 @@ def add_file():
 # Expects JSON blob in the form:
 '''
 {
-    "guid": "<client's guid>"
+    "guid": "<client's guid>",
+    "ka_seq_number": <keepalive sequence number>    #integer
 }
 '''
 # --- OUTPUT ---
@@ -389,3 +390,42 @@ def deregister_file_by_hash():
         }
 
     return jsonify(deregister_file_by_hash_response)
+
+
+# Gets the information about a specific peer
+# this includes what files it is hosting, its expected sequence number,
+# and its expected keep alive number
+# --- INPUT ---
+# The peer's guid via the url
+# --- OUTPUT ---
+# Returns a JSON blob of the form:
+'''
+{
+    "success": true,
+    "files": [
+        {
+            "id": <file's id according to the tracker>,
+            "name": "<file's name>",
+            "hash": "<full file hash>"
+        },
+        ...
+    ],
+    "expected_seq_number": <expected normal sequence number>,
+    "ka_expected_seq_number": <expected keepalive sequence number>
+}
+'''
+# --- ON ERROR ---
+# Returns a JSON blob in the form:
+'''
+{
+    "success" : false,
+    "error" : "<error reason>",
+}
+'''
+@app.route('/peer_status/<peer_guid>', methods=['GET'])
+def peer_status(peer_guid):
+    # pull the peer data from the db (hosted files, seq numbers)
+
+    peer_status_response = models.get_peer_status(peer_guid)
+
+    return jsonify(peer_status_response)

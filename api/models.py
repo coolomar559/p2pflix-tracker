@@ -33,6 +33,7 @@ class Peer(BaseModel):
     uuid = peewee.UUIDField()
     keep_alive_timestamp = peewee.DateTimeField(default=datetime.datetime.now)
     expected_seq_number = peewee.IntegerField(default=0)
+    ka_expected_seq_number = peewee.IntegerField(default=0)
 
     def to_dict_simple(self):
         output_dict = {
@@ -325,7 +326,7 @@ def add_file(add_file_data, peer_ip):
                 peer.save()
 
         if(peer.expected_seq_number != add_file_data["seq_number"]):
-            raise Exception("Peer is expecting sequence number {} (sequence number {} was sent)"
+            raise Exception("Tracker is expecting sequence number {} (sequence number {} was sent)"
                             .format(peer.expected_seq_number, add_file_data["seq_number"]))
 
         # add the file to the db (or create new one if it didn't exist)
@@ -419,9 +420,16 @@ def keep_alive(keep_alive_data, peer_ip):
 
     try:
         peer = Peer.get(Peer.uuid == keep_alive_data["guid"])
+
+        if(peer.ka_expected_seq_number != keep_alive_data["ka_seq_number"]):
+            raise Exception("Tracker is expecting keep_alive sequence number {} (sequence number {} was sent)"
+                            .format(peer.ka_expected_seq_number, keep_alive_data["ka_seq_number"]))
+
+        # update ip, increment the peer's expected keep_alive seq number
         if(peer.ip != peer_ip):
             peer.ip = peer_ip
         peer.keep_alive_timestamp = datetime.datetime.now()
+        peer.expected_seq_number += 1
         peer.save()
     except Peer.DoesNotExist:
         error = "Peer with guid {} does not exist".format(keep_alive_data["guid"])
@@ -456,7 +464,7 @@ def deregister_file(deregister_file_data, peer_ip):
         peer.save()
 
         if(peer.expected_seq_number != deregister_file_data["seq_number"]):
-            raise Exception("Peer is expecting sequence number {} (sequence number {} was sent"
+            raise Exception("Tracker is expecting sequence number {} (sequence number {} was sent"
                             .format(peer.expected_seq_number, deregister_file_data["seq_number"]))
 
         # checks if specified peer is hosting specified file, if so deletes the record
@@ -513,7 +521,7 @@ def deregister_file_by_hash(deregister_file_by_hash_data, peer_ip):
         peer.save()
 
         if(peer.expected_seq_number != deregister_file_by_hash_data["seq_number"]):
-            raise Exception("Peer is expecting sequence number {} (sequence number {} was sent"
+            raise Exception("Tracker is expecting sequence number {} (sequence number {} was sent"
                             .format(peer.expected_seq_number, deregister_file_by_hash_data["seq_number"]))
 
         # checks if specified peer is hosting specified file, if so deletes the record
@@ -558,6 +566,48 @@ def deregister_file_by_hash(deregister_file_by_hash_data, peer_ip):
         }
 
     return deregister_file_by_hash_response
+
+
+# returns the peers status on the tracker as a dict in the specified output format
+# contains files the peer is hosting, and the peer's expected sequence numbers
+def get_peer_status(peer_guid):
+    success = True
+    peer_status_response = {
+        "success": success,
+        "files": [],
+        "expected_seq_number": None,
+        "ka_expected_seq_number": None,
+    }
+
+    try:
+        selected_peer = Peer.select().where(Peer.uuid == peer_guid).get()
+
+        peer_file_list_query = File.select()\
+            .join(Hosts, on=(File.id == Hosts.hosted_file))\
+            .join(Peer, on=(Peer.id == Hosts.hosting_peer))\
+            .where(Peer.uuid == selected_peer.uuid)
+
+        if(peer_file_list_query.exists()):
+            for file in peer_file_list_query:
+                peer_status_response["files"].append(file.to_dict())
+
+        peer_status_response["expected_seq_number"] = selected_peer.expected_seq_number
+        peer_status_response["ka_expected_seq_number"] = selected_peer.ka_expected_seq_number
+
+    except Peer.DoesNotExist:
+        error = "No peer with guid {} is known to tracker".format(peer_guid)
+        success = False
+    except Exception as e:
+        error = str(e)
+        success = False
+
+    if(not success):
+        peer_status_response = {
+            "success": success,
+            "error": error,
+        }
+
+    return peer_status_response
 
 
 # Decorators to explicitly manage connections
