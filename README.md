@@ -263,7 +263,8 @@ Ex: `localhost:42069/keep_alive`
 JSON object in the form:
 ```python
 {
-    "guid": "<client's guid>"   #string
+    "guid": "<client's guid>",   #string
+    "ka_seq_number": <keepalive sequence number>    #integer
 }
 ```
 
@@ -353,6 +354,32 @@ JSON object in the form:
 {
     "success": false,   #boolean
     "error": "<error reason>"   #string
+}
+```
+
+## GET - /peer_status/<peer_guid>
+Gets the information about a specific peer this includes what files it is hosting, its expected sequence number, and its expected keep alive number.
+
+### Input
+GET request to the endpoint url, containing the peer's guid in the url.
+
+Ex: `localhost:42069/peer_guid/d16f97be-0325-4fe8-98f5-b1fc128ae0d6`
+
+### Output
+JSON object in the form:
+```python
+{
+    "success": true,
+    "files": [
+        {
+            "id": <file's id according to the tracker>,
+            "name": "<file's name>",
+            "hash": "<full file hash>"
+        },
+        ...
+    ],
+    "expected_seq_number": <expected normal sequence number>,
+    "ka_expected_seq_number": <expected keepalive sequence number>
 }
 ```
 
