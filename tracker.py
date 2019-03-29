@@ -57,4 +57,4 @@ if __name__ == '__main__':
     constants.set_keepalive_timeout(keepalive_timeout)
     models.load_database(db_path)
     tracker_init(initial_tracker, db_path)
-    app.run(port=port, debug=debug_mode)
+    app.run(host="0.0.0.0", port=port, debug=debug_mode)
