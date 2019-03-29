@@ -429,7 +429,7 @@ def keep_alive(keep_alive_data, peer_ip):
         if(peer.ip != peer_ip):
             peer.ip = peer_ip
         peer.keep_alive_timestamp = datetime.datetime.now()
-        peer.expected_seq_number += 1
+        peer.ka_expected_seq_number += 1
         peer.save()
     except Peer.DoesNotExist:
         error = "Peer with guid {} does not exist".format(keep_alive_data["guid"])
@@ -464,7 +464,7 @@ def deregister_file(deregister_file_data, peer_ip):
         peer.save()
 
         if(peer.expected_seq_number != deregister_file_data["seq_number"]):
-            raise Exception("Tracker is expecting sequence number {} (sequence number {} was sent"
+            raise Exception("Tracker is expecting sequence number {} (sequence number {} was sent)"
                             .format(peer.expected_seq_number, deregister_file_data["seq_number"]))
 
         # checks if specified peer is hosting specified file, if so deletes the record
@@ -589,7 +589,7 @@ def get_peer_status(peer_guid):
 
         if(peer_file_list_query.exists()):
             for file in peer_file_list_query:
-                peer_status_response["files"].append(file.to_dict())
+                peer_status_response["files"].append(file.to_dict_simple())
 
         peer_status_response["expected_seq_number"] = selected_peer.expected_seq_number
         peer_status_response["ka_expected_seq_number"] = selected_peer.ka_expected_seq_number
