@@ -285,7 +285,7 @@ JSON object in the form:
 }
 ```
 
-## POST - /deregister_file
+## DELETE - /deregister_file
 Removes you as a host for the specified file.
 Requires a guid.
 If a file has no hosts remaining, removes it.
@@ -321,7 +321,7 @@ JSON object in the form:
 }
 ```
 
-## POST - /deregister_file_by_hash
+## DELETE - /deregister_file_by_hash
 Removes you as a host for the specified file.
 Requires a guid.
 If a file has no hosts remaining, removes it.
