@@ -42,7 +42,7 @@ if __name__ == '__main__':
         print("Loading settings from \"{}\"...".format(config_file))
         port = settings["server_port"]
         debug_mode = settings["debug_mode"]
-        db_path = Path(settings["db_path"])
+        constants.DB_PATH = Path(settings["db_path"])
         keepalive_timeout = settings["keepalive_timeout"]
         constants.BROADCAST_THREAD_COUNT = settings["broadcast_thread_count"]
         constants.MAX_TRACKER_FAILURES = settings["max_tracker_failures"]
@@ -51,10 +51,9 @@ if __name__ == '__main__':
         print("Error in config file \"{}\", loading default settings...".format(config_file))
         port = SERVER_PORT
         debug_mode = DEBUG
-        db_path = DB_PATH
         keepalive_timeout = KEEPALIVE_TIMEOUT
 
     constants.set_keepalive_timeout(keepalive_timeout)
-    models.load_database(db_path)
-    tracker_init(initial_tracker, db_path)
+    models.load_database(constants.DB_PATH)
+    tracker_init(initial_tracker)
     app.run(host="0.0.0.0", port=port, debug=debug_mode)

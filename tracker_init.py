@@ -6,7 +6,7 @@ from peewee import DoesNotExist
 import requests
 
 
-def tracker_init(initial_tracker, db_path):
+def tracker_init(initial_tracker):
     if initial_tracker is None:
         try:
             tracker_list = map(lambda t: t["ip"], models.get_tracker_list())
@@ -23,17 +23,17 @@ def tracker_init(initial_tracker, db_path):
             print(f"Error: user specified initial tracker '{initial_tracker}' is not an IP")
             exit(1)
 
-    (database, ip) = _get_database(tracker_list)
+    (database, ip) = get_database(tracker_list)
 
     if database is None:
         print("Could not initialize database, try a different initial tracker (see --help)")
         exit(1)
 
-    models.replace_database(db_path, database)
+    models.replace_database(database)
     models.add_tracker(ip)
 
 
-def _get_database(tracker_list):
+def get_database(tracker_list):
     for tracker_ip in tracker_list:
         response = requests.post(f"http://{tracker_ip}:{constants.DEFAULT_SERVER_PORT}/new_tracker", json={})
 
