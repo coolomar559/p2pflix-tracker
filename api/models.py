@@ -19,16 +19,7 @@ class BaseModel(peewee.Model):
 
 
 class Tracker(BaseModel):
-    ip = peewee.CharField()
-    name = peewee.CharField()
-
-    def to_dict(self):
-        output_dict = {
-            "ip": self.ip,
-            "name": self.name,
-        }
-
-        return output_dict
+    ip = peewee.CharField(unique=True)
 
 
 class Peer(BaseModel):
@@ -601,8 +592,8 @@ def tracker_ip_exists(ip):
 
 
 # creates a new tracker with the given IP and name
-def add_tracker(ip, name):
-    tracker = Tracker.create(ip=ip, name=name)
+def add_tracker(ip):
+    tracker = Tracker.create(ip=ip)
 
     return tracker
 

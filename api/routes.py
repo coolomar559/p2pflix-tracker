@@ -534,7 +534,7 @@ def tracker_sync():
         if event == "new_tracker":
             # If the tracker doesn't exist, rebroadcast and add it
             if not models.tracker_ip_exists(event_ip):
-                tracker = models.add_tracker(event_ip, "george")
+                tracker = models.add_tracker(event_ip)
 
                 # Can't just set rebroadcast here since we need to broadcast before adding the tracker
                 broadcaster.new_event(event, event_ip, event_data)
@@ -622,12 +622,12 @@ def new_tracker():
                 # If the tracker exists, remove it before dumping the DB and then re-add it but don't broadcast
                 models.remove_tracker_by_ip(requester_ip)
                 data_dump = models.new_tracker_dump()
-                models.add_tracker(requester_ip, "george")
+                models.add_tracker(requester_ip)
             else:
                 # If the tracker doesn't exist, dump the DB before adding it and then broadcast
                 data_dump = models.new_tracker_dump()
                 broadcaster.new_event("new_tracker", requester_ip, {})
-                new_tracker = models.add_tracker(requester_ip, "george")
+                new_tracker = models.add_tracker(requester_ip)
                 broadcaster.new_tracker(new_tracker)
 
             new_tracker_response = {

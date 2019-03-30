@@ -34,7 +34,7 @@ def tracker_init(initial_tracker, db_path):
         dbfd.write(database)
 
     models.load_database(db_path)
-    models.add_tracker(ip, "george")
+    models.add_tracker(ip)
 
 
 def _get_database(tracker_list):
