@@ -1,19 +1,20 @@
-from _thread import interrupt_main
 from queue import Empty, Queue
 import sys
 from threading import Event, Thread
 from traceback import print_exc
 
 from api import models
-from api.models import constants, Tracker
+from api.models import constants
+from peewee import DoesNotExist
 import requests
+import tracker_init
 
 
 # Worker thread for taking events off of the event queue and sending them
 # Can be interrupted by using the interrupt function
 class BroadCasterThread(Thread):
     def __init__(self, event_broadcaster):
-        super(BroadCasterThread, self).__init__()
+        super().__init__()
         self.event_broadcaster = event_broadcaster
         self._interrupted_event = Event()
 
@@ -57,7 +58,7 @@ class BroadCasterThread(Thread):
                 )
                 keep_trying = not self._handle_response(response, tid)
             except Exception:
-                print(f"Exception in thread {self.ident}:", file=sys.stderr)
+                print(f"Exception in thread {self.name}:", file=sys.stderr)
                 print_exc()
                 keep_trying = not self._increment_tracker_fails(tid)
 
@@ -65,24 +66,24 @@ class BroadCasterThread(Thread):
     # Returns true upon successfully handling an event, and false upon failure
     def _handle_response(self, response, tid):
         if response.status_code != requests.codes.ok:
-            print(f"Thread {self.ident} got not-ok response code: {response.status_code} from tracker with id {tid}")
+            print(f"Thread {self.name} got not-ok response code: {response.status_code} from tracker with id {tid}")
             return self._increment_tracker_fails(tid)
 
         try:
             json = response.json()
 
             if not json["success"] and "dead_tracker" in json and json["dead_tracker"]:
-                print(f"Recieved message from tracker with id {tid} indicating death, shutting down")
-                interrupt_main()
+                print(f"Recieved message from tracker with id {tid} indicating death, resetting DB")
+                self.event_broadcaster.reset_db(tid)
                 return True  # This technically counts as successfully handling an event
             if not json["success"]:
-                print(f"Unsuccessful broadcast to tracker with id {tid} on thread {self.ident}")
+                print(f"Unsuccessful broadcast to tracker with id {tid} on thread {self.name}")
                 print(f"Recieved error: {json['error']}")
                 return self._increment_tracker_fails(tid)
 
             return True
         except ValueError:
-            print(f"Could not parse response JSON in thread {self.ident}:", file=sys.stderr)
+            print(f"Could not parse response JSON in thread {self.name}:", file=sys.stderr)
             print_exc()
             return self._increment_tracker_fails(tid)
 
@@ -101,6 +102,51 @@ class BroadCasterThread(Thread):
         return False
 
 
+# Thread class for running a database reset
+class ResetThread(Thread):
+    def __init__(self, event_broadcaster, tracker_ip):
+        super().__init__()
+        self.broadcaster = event_broadcaster
+        self.tracker_ip = tracker_ip
+
+    # Private function for doing the DB reset
+    def run(self):
+        print("Running database reset")
+        print("Interrupting all the threads")
+        map(lambda thread: thread.interrupt(), self.broadcaster.threads)
+
+        print("Threads interrupted, joining")
+        map(lambda thread: thread.join(), self.broadcaster.threads)
+        print("All threads are dead, resetting the database")
+
+        # Resetting broadcaster
+        self.broadcaster.threads = []
+        self.broadcaster.tracker_list = {}
+        self.broadcaster.initialized = False
+
+        # Set up the tracker list
+        try:
+            tracker_list = models.get_tracker_list()
+        except DoesNotExist:
+            tracker_list = []
+
+        tracker_list.insert(0, self.tracker_ip)
+
+        # Get the new database
+        (new_db, ip) = tracker_init.get_database(tracker_list)
+
+        if new_db is None:
+            print("Could not get database for reset, aborting DB reset")
+            return
+
+        # Replace the database and add the tracker
+        models.replace_database(new_db)
+        models.add_tracker(ip)
+
+        # Re-initialize the broadcaster
+        self.broadcaster.initialize()
+
+
 # Class for broadcasting new events to all known trackers
 class EventBroadcaster:
     # Since we need to ensure the database is actually initialized, don't
@@ -115,7 +161,7 @@ class EventBroadcaster:
         self.threads = []
         try:
             trackers = models.get_tracker_list()
-        except Tracker.DoesNotExist:
+        except DoesNotExist:
             self.initialized = False
             return
 
@@ -166,3 +212,9 @@ class EventBroadcaster:
             del self.tracker_list[tracker_id]
         except KeyError:
             pass  # Ignore KeyError since it's fine if the tracker wasn't in the list
+
+    # The tracker has an inconsistent database, reset it
+    def reset_db(self, tid):
+        ip = self.tracker_list[tid]["ip"]
+        reset_thread = ResetThread(self, ip)
+        reset_thread.start()

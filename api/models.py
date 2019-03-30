@@ -631,13 +631,13 @@ def new_tracker_dump():
 
 
 # Replaces the database at the given path with the contents of the given sql string
-def replace_database(db_path, sql_str):
+def replace_database(sql_str):
     db.close()
 
     # Truncate the db_path file
-    open(db_path, "w").close()
+    open(constants.DB_PATH, "w").close()
 
-    load_database(db_path)
+    load_database(constants.DB_PATH)
     db.connection().executescript(sql_str)
 
 
