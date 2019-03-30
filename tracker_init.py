@@ -1,5 +1,3 @@
-import base64
-import binascii
 import ipaddress
 import pprint
 
@@ -31,10 +29,7 @@ def tracker_init(initial_tracker, db_path):
         print("Could not initialize database, try a different initial tracker (see --help)")
         exit(1)
 
-    with open(db_path, mode='wb') as dbfd:
-        dbfd.write(database)
-
-    models.load_database(db_path)
+    models.replace_database(db_path, database)
     models.add_tracker(ip)
 
 
@@ -60,12 +55,6 @@ def _get_database(tracker_list):
             pprint.pprint(json)
             continue
 
-        data_base64 = json["data"]
-        try:
-            return (base64.b64decode(data_base64, validate=True), tracker_ip)
-        except binascii.Error:
-            # Couldn't decode base64, try next
-            print(f"Could not decode database dump from {tracker_ip}. Trying next tracker")
-            continue
+        return (json["data"], tracker_ip)
 
     return (None, None)
