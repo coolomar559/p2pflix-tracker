@@ -1,12 +1,15 @@
+import base64
 import datetime
 from operator import itemgetter
+from tempfile import NamedTemporaryFile
 import uuid
 
 from api import app, constants
 import peewee
-from peewee import fn
+from peewee import DoesNotExist, fn
+from playhouse.sqlite_ext import CSqliteExtDatabase
 
-db = peewee.SqliteDatabase(None)
+db = CSqliteExtDatabase(None)
 
 
 # The base model the other models extend, used to force all other models to use the same database
@@ -106,35 +109,13 @@ def create_tables():
         db.create_tables([Tracker, Peer, File, Chunk, Hosts])
 
 
-# returns the tracker table from the database as a dict in the specified output format
+# returns the tracker table from the database as a list of dicts
 def get_tracker_list():
-    success = True
-    tracker_list_response = {
-        "success": success,
-        "trackers": [],
-    }
+    trackers = Tracker.select()
+    if not trackers.exists():
+        raise Tracker.DoesNotExist
 
-    try:
-        tracker_list_query = Tracker.select()
-        if(not tracker_list_query.exists()):
-            raise Tracker.DoesNotExist
-
-        for tracker in Tracker.select():
-            tracker_list_response["trackers"].append(tracker.to_dict())
-    except Tracker.DoesNotExist:
-        error = "No other trackers known to this one"
-        success = False
-    except Exception as e:
-        error = str(e)
-        success = False
-
-    if(not success):
-        tracker_list_response = {
-            "success": success,
-            "error": error,
-        }
-
-    return tracker_list_response
+    return list(trackers.dicts())
 
 
 # returns the file list on the tracker as a dict in the specified output format
@@ -521,7 +502,7 @@ def deregister_file_by_hash(deregister_file_by_hash_data, peer_ip):
         peer.save()
 
         if(peer.expected_seq_number != deregister_file_by_hash_data["seq_number"]):
-            raise Exception("Tracker is expecting sequence number {} (sequence number {} was sent"
+            raise Exception("Tracker is expecting sequence number {} (sequence number {} was sent)"
                             .format(peer.expected_seq_number, deregister_file_by_hash_data["seq_number"]))
 
         # checks if specified peer is hosting specified file, if so deletes the record
@@ -608,6 +589,58 @@ def get_peer_status(peer_guid):
         }
 
     return peer_status_response
+
+
+# check if a tracker with the given IP exists in the tracker list
+def tracker_ip_exists(ip):
+    try:
+        Tracker.get(Tracker.ip == ip)
+        return True
+    except DoesNotExist:
+        return False
+
+
+# creates a new tracker with the given IP and name
+def add_tracker(ip, name):
+    tracker = Tracker.create(ip=ip, name=name)
+
+    return tracker
+
+
+# creates a new peer with the given UUID if it doesn't exist
+def ensure_peer_exists(ip, puuid, seq_num=None):
+    peer_uuid = uuid.UUID(puuid)
+    try:
+        Peer.get(Peer.uuid == peer_uuid)
+    except DoesNotExist:
+        if seq_num is None:
+            Peer.create(uuid=peer_uuid, ip=ip)
+        else:
+            Peer.create(uuid=peer_uuid, ip=ip, expected_seq_number=seq_num)
+
+
+# returns the expected sequence number for the given peer uuid
+def peer_expected_seq(puuid):
+    peer = Peer.get(Peer.uuid == puuid)
+    return peer.expected_seq_number
+
+
+# returns the expected keep-alive sequence number for the given peer uuid
+def peer_expected_ka_seq(puuid):
+    peer = Peer.get(Peer.uuid == puuid)
+    return peer.ka_expected_seq_number
+
+
+# dumps the db to a dictionary for new trackers
+def new_tracker_dump():
+    with NamedTemporaryFile() as temp_dump_file:
+        db.backup_to_file(temp_dump_file.name)
+        return base64.b64encode(temp_dump_file.read()).decode("ascii")
+
+
+# removes the tracker with specified id from the tracker list
+def remove_tracker_by_ip(ip):
+    Tracker.delete().where(Tracker.ip == ip).execute()
 
 
 # Decorators to explicitly manage connections

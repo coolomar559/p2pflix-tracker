@@ -1,6 +1,13 @@
+import sys
+from traceback import print_exc
+
 from api import app, models, schemas
+from api.event_broadcaster import EventBroadcaster
 from flask import jsonify, request
-from jsonschema import validate, ValidationError
+from jsonschema import FormatChecker, validate, ValidationError
+from peewee import DoesNotExist
+
+broadcaster = EventBroadcaster()
 
 # Gets the list of files the tracker knows about
 # --- INPUT ---
@@ -149,7 +156,26 @@ def get_file_by_hash(file_full_hash):
 '''
 @app.route('/tracker_list', methods=['GET'])
 def get_tracker_list():
-    tracker_list_response = models.get_tracker_list()
+    success = True
+
+    try:
+        trackers = models.get_tracker_list()
+        tracker_list_response = {
+            "success": success,
+            "trackers": trackers,
+        }
+    except DoesNotExist:
+        error = "No other trackers known to this one"
+        success = False
+    except Exception as e:
+        error = str(e)
+        success = False
+
+    if(not success):
+        tracker_list_response = {
+            "success": success,
+            "error": error,
+        }
 
     return jsonify(tracker_list_response)
 
@@ -208,6 +234,10 @@ def add_file():
         try:
             validate(request_data, schemas.ADD_FILE_SCHEMA)
             add_file_response = models.add_file(request_data, requester_ip)
+
+            if add_file_response["success"]:
+                request_data["guid"] = str(add_file_response["guid"])
+                broadcaster.new_event("add_file", requester_ip, request_data)
         except ValidationError as e:
             error = str(e)
             success = False
@@ -264,6 +294,9 @@ def keep_alive():
         try:
             validate(request_data, schemas.KEEP_ALIVE_SCHEMA)
             keep_alive_response = models.keep_alive(request_data, requester_ip)
+
+            if keep_alive_response["success"]:
+                broadcaster.new_event("keep_alive", requester_ip, request_data)
         except ValidationError as e:
             error = str(e)
             success = False
@@ -376,6 +409,9 @@ def deregister_file_by_hash():
         try:
             validate(request_data, schemas.DEREGISTER_FILE_BY_HASH_SCHEMA)
             deregister_file_by_hash_response = models.deregister_file_by_hash(request_data, requester_ip)
+
+            if deregister_file_by_hash_response["success"]:
+                broadcaster.new_event("deregister_file_by_hash", requester_ip, request_data)
         except ValidationError as e:
             error = str(e)
             success = False
@@ -425,7 +461,190 @@ def deregister_file_by_hash():
 @app.route('/peer_status/<peer_guid>', methods=['GET'])
 def peer_status(peer_guid):
     # pull the peer data from the db (hosted files, seq numbers)
-
     peer_status_response = models.get_peer_status(peer_guid)
 
     return jsonify(peer_status_response)
+
+
+# updates the tracker's db based on a new operation from another tracker
+# expects JSON blob of information regarding the event
+# blob contains event type and a data dictionary that is specific to the event type
+# see the different event's original method (e.g. add_file) for my detail on the data portion
+# If the tracker sending this event does not exist in the DB, the event is ignored
+# --- INPUT ---
+# Expects JSON blob in the form:
+'''
+{
+    "event": "add_file|keep_alive|deregister_file_by_hash|new_tracker",
+    "event_ip": "ip address (e.g. 1.2.3.4)",
+    "data": { ... }
+}
+'''
+# --- OUTPUT ---
+# Returns a JSON blob in the form:
+'''
+{
+    "success": true
+}
+'''
+# --- ON ERROR ---
+# Returns a JSON blob in the form:
+'''
+{
+    "success": false,
+    "error": "<error reason>"
+}
+'''
+@app.route('/tracker_sync', methods=['PATCH'])
+def tracker_sync():
+    request_data = request.get_json(silent=True)
+    requester_ip = request.remote_addr
+
+    if request_data is None:
+        return jsonify({
+            "error": "Request is not JSON",
+            "success": False,
+        })
+
+    if not models.tracker_ip_exists(requester_ip):
+        # Return an error if the tracker is not in the tracker list
+        return jsonify({
+            "success": False,
+            "dead_tracker": True,
+            "error": "Tracker not in tracker list",
+        })
+
+    try:
+        validate(request_data, schemas.TRACKER_SYNC_SCHEMA, format_checker=FormatChecker())
+    except ValidationError as e:
+        return jsonify({
+            "error": str(e),
+            "success": False,
+        })
+
+    event = request_data["event"]
+    event_ip = request_data["event_ip"]
+    event_data = request_data["data"]
+
+    # By default, don't rebroadcast and respond with success
+    rebroadcast = False
+    sync_response = {"success": True}
+
+    try:
+        if event == "new_tracker":
+            # If the tracker doesn't exist, rebroadcast and add it
+            if not models.tracker_ip_exists(event_ip):
+                tracker = models.add_tracker(event_ip, "george")
+
+                # Can't just set rebroadcast here since we need to broadcast before adding the tracker
+                broadcaster.new_event(event, event_ip, event_data)
+                broadcaster.new_tracker(tracker)
+
+        elif event == "add_file":
+            peer_guid = event_data["guid"]
+            models.ensure_peer_exists(event_ip, peer_guid, event_data["seq_number"])
+
+            # If the sequence number is new, apply and rebroadcast
+            if event_data["seq_number"] >= models.peer_expected_seq(peer_guid):
+                models.add_file(event_data, event_ip)
+                rebroadcast = True
+
+        elif event == "keep_alive":
+            peer_guid = event_data["guid"]
+            models.ensure_peer_exists(event_ip, peer_guid)
+
+            # If the keepalive sequence number is new, apply and rebroadcast
+            if event_data["ka_seq_number"] >= models.peer_expected_ka_seq(peer_guid):
+                models.keep_alive(event_data, event_ip)
+                rebroadcast = True
+
+        elif event == "deregister_file_by_hash":
+            peer_guid = event_data["guid"]
+            models.ensure_peer_exists(event_ip, peer_guid)
+
+            # If the sequence number is new, apply and rebroadcast
+            if event_data["seq_number"] >= models.peer_expected_seq(peer_guid):
+                models.deregister_file_by_hash(event_data, event_ip)
+                rebroadcast = True
+
+        # Only rebroadcast if specified
+        if rebroadcast:
+            broadcaster.new_event(event, event_ip, event_data)
+    except Exception:
+        print("Recieved exception during tracker sync", sys.stderr)
+        print_exc()
+
+        return jsonify({
+            "error": "Unexpected error",
+            "success": False,
+        })
+
+    return jsonify(sync_response)
+
+
+# adds a new tracker to the tracker list and responds with a full database dump
+# --- INPUT ---
+# Expects JSON blob in the form: (empty)
+'''
+{ }
+'''
+# --- OUTPUT ---
+# Returns a JSON blob in the form:
+'''
+{
+    "success": true,
+    "data": "... A full database dump"
+}
+'''
+# --- ON ERROR ---
+# Returns a JSON blob in the form:
+'''
+{
+    "success": false,
+    "error": "<error reason>"
+}
+'''
+@app.route('/new_tracker', methods=['POST'])
+def new_tracker():
+    success = True
+
+    request_data = request.get_json(silent=True)
+    requester_ip = request.remote_addr
+
+    if request_data is None:
+        error = "Request is not JSON"
+        success = False
+    else:
+        try:
+            validate(request_data, schemas.NEW_TRACKER_SCHEMA)
+
+            if models.tracker_ip_exists(requester_ip):
+                # If the tracker exists, remove it before dumping the DB and then re-add it but don't broadcast
+                models.remove_tracker_by_ip(requester_ip)
+                data_dump = models.new_tracker_dump()
+                models.add_tracker(requester_ip, "george")
+            else:
+                # If the tracker doesn't exist, dump the DB before adding it and then broadcast
+                data_dump = models.new_tracker_dump()
+                broadcaster.new_event("new_tracker", requester_ip, {})
+                new_tracker = models.add_tracker(requester_ip, "george")
+                broadcaster.new_tracker(new_tracker)
+
+            new_tracker_response = {
+                "success": True,
+                "data": data_dump,
+            }
+        except ValidationError as e:
+            error = str(e)
+            success = False
+        except Exception as e:
+            error = str(e)
+            success = False
+
+    if not success:
+        new_tracker_response = {
+            "success": success,
+            "error": error,
+        }
+
+    return jsonify(new_tracker_response)

@@ -10,7 +10,7 @@ server_port = 42069
 # Debug mode causes extra logging and will restart the tracker whenever modifications
 # are made to the source code
 # possible values: true/false
-debug_mode = "true"
+debug_mode = false
 
 # The path to the tracker database
 # If the file does not already exist it will be created, but only if the full path to its
@@ -22,4 +22,13 @@ db_path = "./tracker.db"
 # If the keep alive timeout is exceeded without a peer refreshing its timeout, it
 # will no longer appear as a hosting peer for any file
 # possible values: any positive integer
-keepalive_timeout = 300 
+keepalive_timeout = 300
+
+# The number of threads to be watching the event broadcast queues
+# possible values: any integer >= 1
+broadcast_thread_count = 4
+
+# The max number of times to attempt sending an update to a tracker before marking it
+# as offline.
+# possible values: any integer >= 0
+max_tracker_failures = 3

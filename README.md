@@ -48,7 +48,7 @@ Currently uses port `42069` by default, but will use the port specified in the c
 * PUT - /keep_alive
 * DELETE - /deregister_file
 * DELETE - /deregister_file_by_hash
-* UPDATE - /tracker_sync
+* PATCH - /tracker_sync
 * POST - /new_tracker
 
 ## GET - /file_list
@@ -250,7 +250,7 @@ JSON object in the form:
 }
 ```
 
-## POST - /keep_alive
+## PUT - /keep_alive
 Tells the server you're still there hosting.
 Updates your keep alive timestamp on the server.
 Requires a guid.
@@ -383,7 +383,7 @@ JSON object in the form:
 }
 ```
 
-## UPDATE - /tracker_sync
+## PATCH - /tracker_sync
 Send/receive an information update to/from another tracker.
 If the tracker has seen the event already, it ignores it. If the tracker has not seen the
 event, it applies it to its own database and broadcasts it to other trackers.
@@ -392,8 +392,9 @@ event, it applies it to its own database and broadcasts it to other trackers.
 JSON object in the form:
 ```python
 {
-    "type": "add_file|keep_alive|deregister_file|new_tracker",   #string
-    "data": { ... },   #dictionary
+    "event": "add_file|keep_alive|deregister_file_by_hash|new_tracker",   #string
+    "event_ip": "<the relevant tracker or peer IP for the event>",   #string
+    "data": { ... }   #dictionary
 }
 ```
 
@@ -435,10 +436,19 @@ JSON object in the form:
 Register as a new tracker, getting a full database update.
 
 ### Input
-No input is necessary for this endpoint.
+Expects an empty JSON object:
+```python
+{ }
+```
 
 ### Output
-TBD
+JSON object in the form:
+```python
+{
+     "success": true   #boolean
+     "data": "... A full database dump"   #string
+}
+```
 
 ### On Error
 JSON object in the form:
