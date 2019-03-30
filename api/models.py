@@ -1,15 +1,13 @@
-import base64
 import datetime
+from io import StringIO
 from operator import itemgetter
-from tempfile import NamedTemporaryFile
 import uuid
 
 from api import app, constants
 import peewee
-from peewee import DoesNotExist, fn
-from playhouse.sqlite_ext import CSqliteExtDatabase
+from peewee import DoesNotExist, fn, SqliteDatabase
 
-db = CSqliteExtDatabase(None)
+db = SqliteDatabase(None)
 
 
 # The base model the other models extend, used to force all other models to use the same database
@@ -624,9 +622,23 @@ def peer_expected_ka_seq(puuid):
 
 # dumps the db to a dictionary for new trackers
 def new_tracker_dump():
-    with NamedTemporaryFile() as temp_dump_file:
-        db.backup_to_file(temp_dump_file.name)
-        return base64.b64encode(temp_dump_file.read()).decode("ascii")
+    con = db.connection()
+    output = StringIO()
+    for line in con.iterdump():
+        output.write(line)
+
+    return output.getvalue()
+
+
+# Replaces the database at the given path with the contents of the given sql string
+def replace_database(db_path, sql_str):
+    db.close()
+
+    # Truncate the db_path file
+    open(db_path, "w").close()
+
+    load_database(db_path)
+    db.connection().executescript(sql_str)
 
 
 # removes the tracker with specified id from the tracker list
