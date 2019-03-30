@@ -1,6 +1,7 @@
 import base64
 import binascii
 import ipaddress
+import pprint
 
 from api import constants, models
 from peewee import DoesNotExist
@@ -56,6 +57,7 @@ def _get_database(tracker_list):
         if not json["success"]:
             # Error making request, try next
             print(f"Request to {tracker_ip}, failed, response JSON follows. Trying next tracker")
+            pprint.pprint(json)
             continue
 
         data_base64 = json["data"]
