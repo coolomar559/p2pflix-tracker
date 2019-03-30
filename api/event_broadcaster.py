@@ -13,7 +13,7 @@ import requests
 # Can be interrupted by using the interrupt function
 class BroadCasterThread(Thread):
     def __init__(self, event_broadcaster):
-        super(BroadCasterThread, self).__init__()
+        super().__init__()
         self.event_broadcaster = event_broadcaster
         self._interrupted_event = Event()
 
@@ -57,7 +57,7 @@ class BroadCasterThread(Thread):
                 )
                 keep_trying = not self._handle_response(response, tid)
             except Exception:
-                print(f"Exception in thread {self.ident}:", file=sys.stderr)
+                print(f"Exception in thread {self.name}:", file=sys.stderr)
                 print_exc()
                 keep_trying = not self._increment_tracker_fails(tid)
 
@@ -65,7 +65,7 @@ class BroadCasterThread(Thread):
     # Returns true upon successfully handling an event, and false upon failure
     def _handle_response(self, response, tid):
         if response.status_code != requests.codes.ok:
-            print(f"Thread {self.ident} got not-ok response code: {response.status_code} from tracker with id {tid}")
+            print(f"Thread {self.name} got not-ok response code: {response.status_code} from tracker with id {tid}")
             return self._increment_tracker_fails(tid)
 
         try:
@@ -76,13 +76,13 @@ class BroadCasterThread(Thread):
                 interrupt_main()
                 return True  # This technically counts as successfully handling an event
             if not json["success"]:
-                print(f"Unsuccessful broadcast to tracker with id {tid} on thread {self.ident}")
+                print(f"Unsuccessful broadcast to tracker with id {tid} on thread {self.name}")
                 print(f"Recieved error: {json['error']}")
                 return self._increment_tracker_fails(tid)
 
             return True
         except ValueError:
-            print(f"Could not parse response JSON in thread {self.ident}:", file=sys.stderr)
+            print(f"Could not parse response JSON in thread {self.name}:", file=sys.stderr)
             print_exc()
             return self._increment_tracker_fails(tid)
 
