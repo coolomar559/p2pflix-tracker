@@ -511,6 +511,11 @@ def deregister_file_by_hash(deregister_file_by_hash_data, peer_ip):
                        Hosts.hosted_file == File.id)\
                 .get()
         except Hosts.DoesNotExist:
+            Chunk.delete()\
+                .join(File, on=(File.chunks == Chunk.id))\
+                .where(File.full_hash == deregister_file_by_hash_data["file_hash"])\
+                .execute()
+
             File.get(File.full_hash == deregister_file_by_hash_data["file_hash"]).delete_instance()
 
         # increment the peer's expected seq number
