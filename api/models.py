@@ -511,9 +511,9 @@ def deregister_file_by_hash(deregister_file_by_hash_data, peer_ip):
                        Hosts.hosted_file == File.id)\
                 .get()
         except Hosts.DoesNotExist:
+            file_to_delete = File.get(File.full_hash == deregister_file_by_hash_data["file_hash"])
             Chunk.delete()\
-                .join(File, on=(File.chunks == Chunk.id))\
-                .where(File.full_hash == deregister_file_by_hash_data["file_hash"])\
+                .where(Chunk.parent_file == file_to_delete.id)\
                 .execute()
 
             File.get(File.full_hash == deregister_file_by_hash_data["file_hash"]).delete_instance()
