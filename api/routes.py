@@ -165,8 +165,7 @@ def get_tracker_list():
             "trackers": trackers,
         }
     except DoesNotExist:
-        error = "No other trackers known to this one"
-        success = False
+        tracker_list_response["trackers"] = []
     except Exception as e:
         error = str(e)
         success = False
