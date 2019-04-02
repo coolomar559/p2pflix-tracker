@@ -165,7 +165,10 @@ def get_tracker_list():
             "trackers": trackers,
         }
     except DoesNotExist:
-        tracker_list_response["trackers"] = []
+        tracker_list_response = {
+            "success": True,
+            "trackers": [],
+        }
     except Exception as e:
         error = str(e)
         success = False
