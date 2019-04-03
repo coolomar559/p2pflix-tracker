@@ -440,7 +440,7 @@ def deregister_file(deregister_file_data, peer_ip):
         host_relationship = Hosts.select()\
             .join(File, on=(File.id == Hosts.hosted_file))\
             .join(Peer, on=(Peer.id == Hosts.hosting_peer))\
-            .where(Peer.uuid == deregister_file_data["guid"] and File.id == deregister_file_data["file_id"]).get()
+            .where((Peer.uuid == deregister_file_data["guid"]) & (File.id == deregister_file_data["file_id"])).get()
         host_relationship.delete_instance()
 
         # if there is no one hosting the file, delete it
@@ -496,8 +496,8 @@ def deregister_file_by_hash(deregister_file_by_hash_data, peer_ip):
         host_relationship = Hosts.select()\
             .join(File, on=(File.id == Hosts.hosted_file))\
             .join(Peer, on=(Peer.id == Hosts.hosting_peer))\
-            .where(Peer.uuid == deregister_file_by_hash_data["guid"] and
-                   File.full_hash == deregister_file_by_hash_data["file_hash"])\
+            .where((Peer.uuid == deregister_file_by_hash_data["guid"]) &
+                   (File.full_hash == deregister_file_by_hash_data["file_hash"]))\
             .get()
         host_relationship.delete_instance()
 
@@ -505,8 +505,8 @@ def deregister_file_by_hash(deregister_file_by_hash_data, peer_ip):
         try:
             Hosts.select()\
                 .join(File, on=(File.id == Hosts.hosted_file))\
-                .where(File.full_hash == deregister_file_by_hash_data["file_hash"] and
-                       Hosts.hosted_file == File.id)\
+                .where((File.full_hash == deregister_file_by_hash_data["file_hash"]) &
+                       (Hosts.hosted_file == File.id))\
                 .get()
         except Hosts.DoesNotExist:
             file_to_delete = File.get(File.full_hash == deregister_file_by_hash_data["file_hash"])
