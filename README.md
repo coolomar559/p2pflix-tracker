@@ -68,7 +68,7 @@ JSON object in the form:
         {
             "id": <file id>,    #integer
             "name": "<file's name>",   #string
-            "hash": "<full file hash>", #base64 string
+            "full_hash": "<full file hash>", #base64 string
             "active_peers": <number of recently keepalived peers> #integer
         },
         ...
@@ -110,7 +110,7 @@ JSON object in the form:
         {
             "id": <chunk id for sequencing>,    #integer
             "name": "<chunk filename>", #string
-            "hash": "<hash of chunk>"   #string (sha256 hash)
+            "chunk_hash": "<hash of chunk>"   #string (sha256 hash)
         },
         ...
     ]
@@ -142,7 +142,7 @@ JSON object in the form:
 {
     "success": true,    #boolean
     "name": "<file name>", #string
-    "file_hash": "<hash of the full file>",    #string (sha256 hash)
+    "full_hash": "<hash of the full file>",    #string (sha256 hash)
     "peers": [
         {
             "ip": "<peer's ip>" #string
@@ -153,7 +153,7 @@ JSON object in the form:
         {
             "id": <chunk id for sequencing>,    #integer
             "name": "<chunk filename>", #string
-            "hash": "<hash of chunk>"   #string (sha256 hash)
+            "chunk_hash": "<hash of chunk>"   #string (sha256 hash)
         },
         ...
     ]
@@ -222,7 +222,7 @@ JSON object in the form:
         {
             "id": <chunk id for sequencing>,    #integer
             "name": "<chunk filename>", #string
-            "hash": "<hash of chunk>"   #string (sha256 hash)
+            "chunk_hash": "<hash of chunk>"   #string (sha256 hash)
         },
         ...
     ],
@@ -374,7 +374,7 @@ JSON object in the form:
         {
             "id": <file's id according to the tracker>,
             "name": "<file's name>",
-            "hash": "<full file hash>"
+            "full_hash": "<full file hash>"
         },
         ...
     ],
