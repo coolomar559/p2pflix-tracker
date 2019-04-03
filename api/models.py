@@ -23,7 +23,7 @@ class Tracker(BaseModel):
 class Peer(BaseModel):
     ip = peewee.CharField()
     uuid = peewee.UUIDField()
-    keep_alive_timestamp = peewee.DateTimeField(default=datetime.datetime.now)
+    keep_alive_timestamp = peewee.DateTimeField(default=datetime.datetime.min)
     expected_seq_number = peewee.IntegerField(default=0)
     ka_expected_seq_number = peewee.IntegerField(default=0)
 
@@ -292,7 +292,6 @@ def add_file(add_file_data, peer_ip):
             peer = Peer.get(Peer.uuid == add_file_data["guid"])
             if(peer.ip != peer_ip):
                 peer.ip = peer_ip
-                peer.keep_alive_timestamp = datetime.datetime.now()
                 peer.save()
 
         if(peer.expected_seq_number != add_file_data["seq_number"]):
@@ -487,7 +486,6 @@ def deregister_file_by_hash(deregister_file_by_hash_data, peer_ip):
         peer = Peer.get(Peer.uuid == deregister_file_by_hash_data["guid"])
         if(peer.ip != peer_ip):
             peer.ip = peer_ip
-        peer.keep_alive_timestamp = datetime.datetime.now()
         peer.save()
 
         if(peer.expected_seq_number != deregister_file_by_hash_data["seq_number"]):
