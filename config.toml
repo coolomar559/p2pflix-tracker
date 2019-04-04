@@ -22,7 +22,7 @@ db_path = "./tracker.db"
 # If the keep alive timeout is exceeded without a peer refreshing its timeout, it
 # will no longer appear as a hosting peer for any file
 # possible values: any positive integer
-keepalive_timeout = 300
+keepalive_timeout = 20
 
 # The number of threads to be watching the event broadcast queues
 # possible values: any integer >= 1
