@@ -4,7 +4,7 @@
 # What port the tracker will run on (other trackers will assume 80 by default,
 # so don't change this without a really good reason)
 # possible values: any valid port integer
-server_port = 42069
+server_port = 42070
 
 # Whether or not the tracker should run in debug mode
 # Debug mode causes extra logging and will restart the tracker whenever modifications

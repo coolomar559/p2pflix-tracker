@@ -37,7 +37,7 @@ By default the tracker will load setting from `config.toml`.
 
 # REST API Documentation
 
-Currently uses port `42069` by default, but will use the port specified in the config file.
+Currently uses port `42070` by default, but will use the port specified in the config file.
 
 ## Endpoints
 * GET - /file_list
@@ -57,7 +57,7 @@ Gets the list of files that the tracker knows about.
 ### Input
 GET request to the endpoint url.
 
-Ex: `localhost:42069/file_list`
+Ex: `localhost:42070/file_list`
 
 ### Output
 JSON object in the form:
@@ -91,7 +91,7 @@ Gets the information about a specified file, including peers hosting it and its 
 ### Input
 GET request to the endpoint url, containing the file's id in the url.
 
-Ex: `localhost:42069/file/2`
+Ex: `localhost:42070/file/2`
 
 ### Output
 JSON object in the form:
@@ -134,7 +134,7 @@ GET request to the endpoint url, containing the file's full hash in the url.
 
 If there are somehow multiple files with the same hash, returns the first one.
 
-Ex: `localhost:42069/file_by_hash/lkjlkjalijfljsdll9823`
+Ex: `localhost:42070/file_by_hash/lkjlkjalijfljsdll9823`
 
 ### Output
 JSON object in the form:
@@ -175,7 +175,7 @@ Gets the list of other trackers the tracker knows about.
 ### Input
 GET request to the endpoint url.
 
-Ex: `localhost:42069/tracker_list`
+Ex: `localhost:42070/tracker_list`
 
 ### Output
 JSON object in the form:
@@ -211,7 +211,7 @@ If the peer does not already have a guid, they can provide `null` and will be gi
 ### Input
 POST request to the endpoint url with a JSON object.
 
-Ex: `localhost:42069/add_file`
+Ex: `localhost:42070/add_file`
 
 JSON object in the form:
 ```python
@@ -258,7 +258,7 @@ Requires a guid.
 ### Input
 PUT request to the endpoint url with a JSON object.
 
-Ex: `localhost:42069/keep_alive`
+Ex: `localhost:42070/keep_alive`
 
 JSON object in the form:
 ```python
@@ -293,7 +293,7 @@ If a file has no hosts remaining, removes it.
 ### Input
 DELETE request to the endpoint url with a JSON object.
 
-Ex: `localhost:42069/keep_alive`
+Ex: `localhost:42070/keep_alive`
 
 JSON object in the form:
 ```python
@@ -329,7 +329,7 @@ If a file has no hosts remaining, removes it.
 ### Input
 DELETE request to the endpoint url with a JSON object.
 
-Ex: `localhost:42069/keep_alive`
+Ex: `localhost:42070/keep_alive`
 
 JSON object in the form:
 ```python
@@ -363,7 +363,7 @@ Gets the information about a specific peer this includes what files it is hostin
 ### Input
 GET request to the endpoint url, containing the peer's guid in the url.
 
-Ex: `localhost:42069/peer_guid/d16f97be-0325-4fe8-98f5-b1fc128ae0d6`
+Ex: `localhost:42070/peer_guid/d16f97be-0325-4fe8-98f5-b1fc128ae0d6`
 
 ### Output
 JSON object in the form:

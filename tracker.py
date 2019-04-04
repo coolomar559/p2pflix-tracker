@@ -9,7 +9,6 @@ from tracker_init import tracker_init
 # default settings
 CONFIG_FILE = Path("config.toml")
 INITIAL_TRACKER = None
-SERVER_PORT = 42069
 DEBUG = False
 DB_PATH = Path("tracker.db")
 KEEPALIVE_TIMEOUT = 5 * 60    # 5 minutes
@@ -49,7 +48,7 @@ if __name__ == '__main__':
 
     except Exception:
         print("Error in config file \"{}\", loading default settings...".format(config_file))
-        port = SERVER_PORT
+        port = constants.DEFAULT_SERVER_PORT
         debug_mode = DEBUG
         keepalive_timeout = KEEPALIVE_TIMEOUT
 
